@@ -1,2 +1,60 @@
-(כאן התיאור שלך – מותר קצר: “בצע לילה מלא לפי Multi-Vendor + B2B מושלמת + In-App Agent…”
-אם תרצה, אכניס לך את ה-brief המלא מוכן להדבקה בבלוק נפרד.)
+TITLE: Overnight — Multi-Vendor B2B/B2C + In-App Agent (Supabase + App) — GPT-5 (no prompts)
+
+CONSTRAINTS:
+- Non-destructive (no DROP), secrets never in git, Hebrew UX copy, logs per step, branch codex/overnight-{{today}}.
+
+STEPS:
+1) Repo & Env
+- Create/switch to branch codex/overnight-{{today}}.
+- Ensure .gitignore ignores: .env, .venv, node_modules, build, dist, logs, .dart_tool.
+- Rebuild .venv; pip install -r requirements.txt + eval_type_backport.
+- Ensure agent/__init__.py; make bin/run_agent.command run “python -m agent.run_agent”.
+
+2) Agent reliability (Python)
+- agent/order_agent.py: add “from __future__ import annotations”.
+- price_for_customer: if RPC /rest/v1/rpc/price_for_customer fails → read price from products via REST; return {"sku","customer_id","price","currency":"ILS"}.
+- create_order: if RPC fails → insert orders + order_items via REST; price from products; return {"order_id","customer_id","total","items"}.
+- agent/run_agent.py: add --once/--prompt for non-interactive smoke; clear Hebrew errors.
+
+3) Supabase schema (minimal, non-destructive)
+- Create-if-missing: vendors(slug pk,name,status,created_at), vendor_users(vendor_slug,user_id,role,pk), product_vendors(sku,vendor_slug,pk), vendor_settings(vendor_slug,settings jsonb,updated_at), payouts(id uuid pk,vendor_slug,period_start,end,amount,currency,status,created_at).
+- Indexes; enable RLS + base policies by vendor_slug.
+- Seed lookups if needed: vendors('ashachar'), categories('uncategorized'), brands('generic').
+- Upsert demo product SP-NTM-32 price 12.90 slug sp-ntm-32, linked to 'ashachar'.
+
+4) App (B2B “מושלם”)
+- Quick-Order (paste list SKU,Qty).
+- Offline-first (cache lists/cart; queue writes for sync on reconnect).
+- “החנות שלי” לוונדור: daily KPIs, top products, low stock, CSV export.
+- Role-based UI (buyer/manager/vendor/admin); approvals UI for discount policy.
+- Tests for repositories/services (mock Supabase); lint (dart analyze / npm test).
+
+5) Admin Panel
+- User management (invite/deactivate/reactivate) with audit.
+- Orders grid with filters (vendor/customer/status) + CSV export.
+- Guardrail policy config (discounts > X% need approval) — infra + TODO hook.
+
+6) In-App AI Assistant
+- ai/assistant/ (tiny server) using Agents SDK/Responses; tools wired to Supabase REST: search_products, price_for_customer, create_order, update_order_status, get_vendor_kpis (+ File Search if vector store exists).
+- ai/chat-ui (Next.js, port 3100) embedded via WebView/iframe at /assistant.
+- README how to run locally; secrets server-side only.
+
+7) Evals
+- docs/evals/orders_eval.yaml with ~10 Hebrew prompts; script to run; output logs/evals-{{timestamp}}.md.
+- If fails, refine system prompt/guardrails; commit summary.
+
+8) B2C Playbook (docs only)
+- docs/wp_b2c_playbook.md: homepage hot/new, WhatsApp CTA, remove product share buttons; perf (LCP/Critical CSS/Fonts/Cache); WP-CLI export/import; safe Staging→Prod.
+
+9) Cleanup & Tooling
+- Remove dead files/components; pre-commit (black/isort/ruff or relevant; dart format).
+- Secret scan; ensure .env ignored; feature flags if present.
+
+10) Smoke + Summary
+- Run: python -m agent.run_agent --once --prompt "פתח הזמנה ל-5 יחידות של SP-NTM-32 ללקוח 123."
+- Write docs/overnight_summary.md (what changed, TODO board); keep logs under logs/*.
+
+NOTES:
+- Use OPENAI_API_KEY from environment; do not print keys.
+- If FKs block seed → upsert lookups then retry.
+- Hebrew UX text where relevant; concise code comments.
