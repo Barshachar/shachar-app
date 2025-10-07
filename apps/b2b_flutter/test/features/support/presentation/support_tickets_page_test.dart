@@ -13,8 +13,17 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Support'), findsOneWidget);
-    expect(find.text('#2034 Login Issue'), findsOneWidget);
-    expect(find.text('New Ticket'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('support_tickets_title')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('support_ticket_subject_2034')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('support_new_ticket_btn')),
+      findsOneWidget,
+    );
   });
 }

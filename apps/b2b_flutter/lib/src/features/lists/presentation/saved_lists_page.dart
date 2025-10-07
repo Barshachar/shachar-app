@@ -167,6 +167,7 @@ class _SavedListsError extends StatelessWidget {
         l10n?.translate('savedListsErrorTitle') ?? 'Saved lists unavailable';
     final String retryLabel = l10n?.translate('ordersRetry') ?? 'Try again';
     return Container(
+      key: const ValueKey('saved_lists_error_state'),
       color: background,
       alignment: Alignment.center,
       child: Column(

@@ -112,7 +112,8 @@ class PromotionsPage extends ConsumerWidget {
                 termsText: p.termsText,
                 tags: p.tags,
                 imageUrl: p.imageUrl,
-                onViewProducts: () => context.go('/catalog'),
+                onViewProducts:
+                    p.onViewProducts ?? () => context.go('/catalog'),
               );
             }).toList();
 

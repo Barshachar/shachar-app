@@ -15,7 +15,10 @@ class SupportTicketsPage extends ConsumerWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Support Tickets'),
+          title: const Text(
+            'Support Tickets',
+            key: ValueKey('support_tickets_title'),
+          ),
           backgroundColor: AColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -30,6 +33,7 @@ class SupportTicketsPage extends ConsumerWidget {
         ),
         backgroundColor: AColors.background,
         floatingActionButton: FloatingActionButton.extended(
+          key: const ValueKey('support_new_ticket_btn'),
           backgroundColor: Colors.white,
           foregroundColor: AColors.primary,
           onPressed: () {
@@ -124,6 +128,7 @@ class _TicketCard extends StatelessWidget {
         ATypography.bodySm.copyWith(color: AColors.neutral600);
 
     return Container(
+      key: ValueKey('support_ticket_${ticket.id}'),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -151,6 +156,7 @@ class _TicketCard extends StatelessWidget {
                     children: [
                       Text(
                         ticket.subject,
+                        key: ValueKey('support_ticket_subject_${ticket.id}'),
                         style: ATypography.titleSm.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
