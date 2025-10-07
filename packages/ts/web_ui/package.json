@@ -1,0 +1,9 @@
+{
+  "name": "@ashachar/web-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./og/template": "./src/og/template.tsx"
+  }
+}

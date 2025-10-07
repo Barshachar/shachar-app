@@ -1,0 +1,24 @@
+name: design_system
+description: Shared UI components for the א.שחר Flutter apps.
+version: 0.1.0
+publish_to: "none"
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_hooks: ^0.21.3+1
+  flutter_riverpod: ^3.0.0
+  hooks_riverpod: ^3.0.0
+  responsive_framework: ^1.2.0
+  flex_color_scheme: ^8.2.0
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
