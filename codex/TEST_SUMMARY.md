@@ -1,13 +1,19 @@
-# Test Summary — 2025-09-20
+# Test Summary — 2025-10-07
 
 ## Flutter (`apps/b2b_flutter`)
 - Command: `./.flutter_local/bin/flutter --no-version-check test --coverage -r expanded`
-- Result: **FAILED** — Flutter analytics attempted to write to `~/.dart-tool/dart-flutter-telemetry-session.json` and the sandbox returned `Operation not permitted`. Code changes include Riverpod listener fixes, unified harness (`test/test_harness.dart`), deterministic widget keys, and fake price services to keep tests offline.
-- Follow-up: Re-run the suite in an environment where Flutter can write telemetry (or set `FLUTTER_HOST=https://example.invalid`/`FLUTTER_ANALYTICS_DISABLED=true`) and verify all suites pass.
+- Result: **PASSED** (env: `HOME=$PWD`, `PUB_CACHE=/Users/shachar/.pub-cache`, `FLUTTER_SUPPRESS_ANALYTICS=true`, `--no-pub --no-dds`, escalated loopback sockets)
+- Previous failures addressed:
+  - `test/lists/saved_lists_states_test.dart` — added `saved_lists_error_state` key.
+  - `test/features/support/presentation/support_tickets_page_test.dart` — promoted keyed assertions and exposed matching keys in UI.
+  - `test/promotions/promotions_card_test.dart` — preserved injected callbacks.
+  - `test/quick_order/*` — harness now waits for catalog provider and forces review stage.
+  - `test/orders/checkout_page_test.dart` — stubbed checkout form/pricing providers so submit CTA renders.
 
 ## Web PWA (`apps/web_pwa`)
-- Command: `npm test`
-- Result: **FAILED** — Vitest now uses the `jsdom` environment. `jsdom` has been added to `devDependencies`, but the package is not installed inside the sandbox. Install locally (`npm install`) before re-running `npm test`.
+- Command: `npx --yes vitest run`
+- Result: **BLOCKED** — Vitest requires `jsdom`. Run `npm install` (or ensure dev deps are locally installed) before re-running tests.
 
 ## Notes
-- Widget tests should be wrapped with `makeTestApp` and can override dependencies via the `overrides` parameter. Use `FakePriceResolutionService` from `test/fakes/` to prevent live Supabase calls.
+- `test/test_harness.dart` now accepts untyped override lists; callers may continue to pass `Override` instances without change.
+- Quick order helpers synchronise provider futures so catalog gating assertions can rely on deterministic state.
