@@ -1,0 +1,10 @@
+{
+  "name": "Ashachar Marketplace",
+  "short_name": "Ashachar",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00796B",
+  "description": "B2B multi vendor marketplace",
+  "icons": []
+}

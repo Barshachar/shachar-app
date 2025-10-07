@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+      - name: Install dependencies
+        working-directory: app
+        run: flutter pub get
+      - name: Flutter analyze
+        working-directory: app
+        run: flutter analyze
+      - name: Flutter tests
+        working-directory: app
+        run: flutter test --coverage
+
+  deno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.46.0
+      - name: Run Edge Function tests
+        run: deno test supabase/functions/order_splitter/utils_test.ts

@@ -1,0 +1,1262 @@
+[
+  {
+    "id": "var-copper-pipe-16mm",
+    "product_id": "prod-copper-pipe-16mm",
+    "name": "ברירת מחדל",
+    "sku": "PL-CP-016-DEF",
+    "price_cents": 1490,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1371
+      }
+    ]
+  },
+  {
+    "id": "var-copper-pipe-22mm",
+    "product_id": "prod-copper-pipe-22mm",
+    "name": "ברירת מחדל",
+    "sku": "PL-CP-022-DEF",
+    "price_cents": 1890,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1739
+      }
+    ]
+  },
+  {
+    "id": "var-pvc-elbow-32mm",
+    "product_id": "prod-pvc-elbow-32mm",
+    "name": "ברירת מחדל",
+    "sku": "PL-PVC-032-DEF",
+    "price_cents": 740,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 681
+      }
+    ]
+  },
+  {
+    "id": "var-brass-ball-valve-34",
+    "product_id": "prod-brass-ball-valve-34",
+    "name": "ברירת מחדל",
+    "sku": "PL-BV-034-DEF",
+    "price_cents": 2590,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2383
+      }
+    ]
+  },
+  {
+    "id": "var-galvanized-nipple-1inch",
+    "product_id": "prod-galvanized-nipple-1inch",
+    "name": "ברירת מחדל",
+    "sku": "PL-GN-100-DEF",
+    "price_cents": 990,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 911
+      }
+    ]
+  },
+  {
+    "id": "var-flexible-hose-3040",
+    "product_id": "prod-flexible-hose-3040",
+    "name": "ברירת מחדל",
+    "sku": "PL-FH-3040-DEF",
+    "price_cents": 1290,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1187
+      }
+    ]
+  },
+  {
+    "id": "var-compression-fitting-25mm",
+    "product_id": "prod-compression-fitting-25mm",
+    "name": "ברירת מחדל",
+    "sku": "PL-COMP-025-DEF",
+    "price_cents": 890,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 819
+      }
+    ]
+  },
+  {
+    "id": "var-pullout-faucet-pro",
+    "product_id": "prod-pullout-faucet-pro",
+    "name": "ברירת מחדל",
+    "sku": "FC-PO-PR-DEF",
+    "price_cents": 89900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 82708
+      }
+    ]
+  },
+  {
+    "id": "var-waterfall-bath-faucet",
+    "product_id": "prod-waterfall-bath-faucet",
+    "name": "ברירת מחדל",
+    "sku": "FC-WF-AMB-DEF",
+    "price_cents": 62400,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 57408
+      }
+    ]
+  },
+  {
+    "id": "var-minimalist-basin-mixer",
+    "product_id": "prod-minimalist-basin-mixer",
+    "name": "ברירת מחדל",
+    "sku": "FC-MB-001-DEF",
+    "price_cents": 41800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 38456
+      }
+    ]
+  },
+  {
+    "id": "var-hiarch-kitchen-spray",
+    "product_id": "prod-hiarch-kitchen-spray",
+    "name": "ברירת מחדל",
+    "sku": "FC-HK-002-DEF",
+    "price_cents": 75800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 69736
+      }
+    ]
+  },
+  {
+    "id": "var-square-shower-column",
+    "product_id": "prod-square-shower-column",
+    "name": "ברירת מחדל",
+    "sku": "FC-SC-003-DEF",
+    "price_cents": 119900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 110308
+      }
+    ]
+  },
+  {
+    "id": "var-thermostatic-wall-faucet",
+    "product_id": "prod-thermostatic-wall-faucet",
+    "name": "ברירת מחדל",
+    "sku": "FC-TW-004-DEF",
+    "price_cents": 98500,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 90620
+      }
+    ]
+  },
+  {
+    "id": "var-concealed-three-way-diverter",
+    "product_id": "prod-concealed-three-way-diverter",
+    "name": "ברירת מחדל",
+    "sku": "FC-CD-005-DEF",
+    "price_cents": 67400,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 62008
+      }
+    ]
+  },
+  {
+    "id": "var-geberit-sigma-dual",
+    "product_id": "prod-geberit-sigma-dual",
+    "name": "ברירת מחדל",
+    "sku": "CC-GE-SIG-DEF",
+    "price_cents": 122900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 113068
+      }
+    ]
+  },
+  {
+    "id": "var-grohe-rapid-slim",
+    "product_id": "prod-grohe-rapid-slim",
+    "name": "ברירת מחדל",
+    "sku": "CC-GR-RAP-DEF",
+    "price_cents": 109900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 101108
+      }
+    ]
+  },
+  {
+    "id": "var-higold-ultra-slim",
+    "product_id": "prod-higold-ultra-slim",
+    "name": "ברירת מחדל",
+    "sku": "CC-HI-ULT-DEF",
+    "price_cents": 94800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 87216
+      }
+    ]
+  },
+  {
+    "id": "var-raffi-eco-slim",
+    "product_id": "prod-raffi-eco-slim",
+    "name": "ברירת מחדל",
+    "sku": "CC-RA-ECO-DEF",
+    "price_cents": 89900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 82708
+      }
+    ]
+  },
+  {
+    "id": "var-hafele-silent-slim",
+    "product_id": "prod-hafele-silent-slim",
+    "name": "ברירת מחדל",
+    "sku": "CC-HA-SIL-DEF",
+    "price_cents": 101900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 93748
+      }
+    ]
+  },
+  {
+    "id": "var-tece-compact-unit",
+    "product_id": "prod-tece-compact-unit",
+    "name": "ברירת מחדל",
+    "sku": "CC-TE-COM-DEF",
+    "price_cents": 113500,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 104420
+      }
+    ]
+  },
+  {
+    "id": "var-viega-supra-frame",
+    "product_id": "prod-viega-supra-frame",
+    "name": "ברירת מחדל",
+    "sku": "CC-VI-SUP-DEF",
+    "price_cents": 118900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 109388
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-te-32mm",
+    "product_id": "prod-plasson-te-32mm",
+    "name": "ברירת מחדל",
+    "sku": "PF-TE-032-DEF",
+    "price_cents": 1490,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1371
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-elbow-25mm",
+    "product_id": "prod-plasson-elbow-25mm",
+    "name": "ברירת מחדל",
+    "sku": "PF-EL-025-DEF",
+    "price_cents": 1390,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1279
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-coupling-50mm",
+    "product_id": "prod-plasson-coupling-50mm",
+    "name": "ברירת מחדל",
+    "sku": "PF-CO-050-DEF",
+    "price_cents": 3590,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 3303
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-reducer-40-32",
+    "product_id": "prod-plasson-reducer-40-32",
+    "name": "ברירת מחדל",
+    "sku": "PF-RE-4032-DEF",
+    "price_cents": 2590,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2383
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-end-cap-63",
+    "product_id": "prod-plasson-end-cap-63",
+    "name": "ברירת מחדל",
+    "sku": "PF-EC-063-DEF",
+    "price_cents": 2190,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2015
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-male-adaptor-20",
+    "product_id": "prod-plasson-male-adaptor-20",
+    "name": "ברירת מחדל",
+    "sku": "PF-MA-020-DEF",
+    "price_cents": 1290,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1187
+      }
+    ]
+  },
+  {
+    "id": "var-plasson-ball-valve-32",
+    "product_id": "prod-plasson-ball-valve-32",
+    "name": "ברירת מחדל",
+    "sku": "PF-BV-032-DEF",
+    "price_cents": 5290,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 4867
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-linear-drain-80",
+    "product_id": "prod-lipsky-linear-drain-80",
+    "name": "ברירת מחדל",
+    "sku": "LD-LD-080-DEF",
+    "price_cents": 48600,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 44712
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-shower-channel-60",
+    "product_id": "prod-lipsky-shower-channel-60",
+    "name": "ברירת מחדל",
+    "sku": "LD-SC-060-DEF",
+    "price_cents": 42900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 39468
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-floor-siphon-pro",
+    "product_id": "prod-lipsky-floor-siphon-pro",
+    "name": "ברירת מחדל",
+    "sku": "LD-FS-PRO-DEF",
+    "price_cents": 28900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 26588
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-balcony-drain-round",
+    "product_id": "prod-lipsky-balcony-drain-round",
+    "name": "ברירת מחדל",
+    "sku": "LD-BD-RND-DEF",
+    "price_cents": 21900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 20148
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-corner-drain-flat",
+    "product_id": "prod-lipsky-corner-drain-flat",
+    "name": "ברירת מחדל",
+    "sku": "LD-CD-FLT-DEF",
+    "price_cents": 25900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 23828
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-outlet-kit",
+    "product_id": "prod-lipsky-outlet-kit",
+    "name": "ברירת מחדל",
+    "sku": "LD-OK-002-DEF",
+    "price_cents": 31200,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 28704
+      }
+    ]
+  },
+  {
+    "id": "var-lipsky-prefab-drain-sets",
+    "product_id": "prod-lipsky-prefab-drain-sets",
+    "name": "ברירת מחדל",
+    "sku": "LD-PF-SET-DEF",
+    "price_cents": 37800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 34776
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-tube-16",
+    "product_id": "prod-sp-pex-tube-16",
+    "name": "ברירת מחדל",
+    "sku": "SP-TU-016-DEF",
+    "price_cents": 2250,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2070
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-tube-20",
+    "product_id": "prod-sp-pex-tube-20",
+    "name": "ברירת מחדל",
+    "sku": "SP-TU-020-DEF",
+    "price_cents": 2850,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2622
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-tee-16",
+    "product_id": "prod-sp-pex-tee-16",
+    "name": "ברירת מחדל",
+    "sku": "SP-TE-016-DEF",
+    "price_cents": 1390,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1279
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-manifold-6",
+    "product_id": "prod-sp-pex-manifold-6",
+    "name": "ברירת מחדל",
+    "sku": "SP-MA-006-DEF",
+    "price_cents": 49800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 45816
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-press-elbow-90",
+    "product_id": "prod-sp-pex-press-elbow-90",
+    "name": "ברירת מחדל",
+    "sku": "SP-EL-090-DEF",
+    "price_cents": 1890,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1739
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-sleeve-16",
+    "product_id": "prod-sp-pex-sleeve-16",
+    "name": "ברירת מחדל",
+    "sku": "SP-SL-016-DEF",
+    "price_cents": 650,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 598
+      }
+    ]
+  },
+  {
+    "id": "var-sp-pex-ball-valve-thermo",
+    "product_id": "prod-sp-pex-ball-valve-thermo",
+    "name": "ברירת מחדל",
+    "sku": "SP-BV-TH-DEF",
+    "price_cents": 15800,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 14536
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-pipe-32",
+    "product_id": "prod-ppr-pipe-32",
+    "name": "ברירת מחדל",
+    "sku": "PPR-PI-032-DEF",
+    "price_cents": 2690,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2475
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-tee-25",
+    "product_id": "prod-ppr-tee-25",
+    "name": "ברירת מחדל",
+    "sku": "PPR-TE-025-DEF",
+    "price_cents": 1290,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1187
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-elbow-20",
+    "product_id": "prod-ppr-elbow-20",
+    "name": "ברירת מחדל",
+    "sku": "PPR-EL-020-DEF",
+    "price_cents": 1190,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1095
+      }
+    ]
+  },
+  {
+    "id": "var-multilayer-press-fitting-26",
+    "product_id": "prod-multilayer-press-fitting-26",
+    "name": "ברירת מחדל",
+    "sku": "PPR-MP-026-DEF",
+    "price_cents": 3890,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 3579
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-union-ball-32",
+    "product_id": "prod-ppr-union-ball-32",
+    "name": "ברירת מחדל",
+    "sku": "PPR-UB-032-DEF",
+    "price_cents": 7290,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 6707
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-male-adapter-25",
+    "product_id": "prod-ppr-male-adapter-25",
+    "name": "ברירת מחדל",
+    "sku": "PPR-MA-025-DEF",
+    "price_cents": 1790,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 1647
+      }
+    ]
+  },
+  {
+    "id": "var-ppr-double-nipple-40",
+    "product_id": "prod-ppr-double-nipple-40",
+    "name": "ברירת מחדל",
+    "sku": "PPR-DN-040-DEF",
+    "price_cents": 2390,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 2199
+      }
+    ]
+  },
+  {
+    "id": "var-chares-counter-sink-60",
+    "product_id": "prod-chares-counter-sink-60",
+    "name": "ברירת מחדל",
+    "sku": "SC-CS-060-DEF",
+    "price_cents": 68900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 63388
+      }
+    ]
+  },
+  {
+    "id": "var-chares-wall-hung-45",
+    "product_id": "prod-chares-wall-hung-45",
+    "name": "ברירת מחדל",
+    "sku": "SC-WH-045-DEF",
+    "price_cents": 45900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 42228
+      }
+    ]
+  },
+  {
+    "id": "var-chares-undermount-oval",
+    "product_id": "prod-chares-undermount-oval",
+    "name": "ברירת מחדל",
+    "sku": "SC-UM-OVL-DEF",
+    "price_cents": 39900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 36708
+      }
+    ]
+  },
+  {
+    "id": "var-chares-freestanding-basin",
+    "product_id": "prod-chares-freestanding-basin",
+    "name": "ברירת מחדל",
+    "sku": "SC-FS-001-DEF",
+    "price_cents": 128900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 118588
+      }
+    ]
+  },
+  {
+    "id": "var-chares-vintage-bath",
+    "product_id": "prod-chares-vintage-bath",
+    "name": "ברירת מחדל",
+    "sku": "SC-VB-180-DEF",
+    "price_cents": 289900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 266708
+      }
+    ]
+  },
+  {
+    "id": "var-chares-stainless-sink-2bowl",
+    "product_id": "prod-chares-stainless-sink-2bowl",
+    "name": "ברירת מחדל",
+    "sku": "SC-ST-2B-DEF",
+    "price_cents": 81900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 75348
+      }
+    ]
+  },
+  {
+    "id": "var-chares-resin-basin-70",
+    "product_id": "prod-chares-resin-basin-70",
+    "name": "ברירת מחדל",
+    "sku": "SC-RB-070-DEF",
+    "price_cents": 72900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 67068
+      }
+    ]
+  },
+  {
+    "id": "var-slow-close-toilet-seat",
+    "product_id": "prod-slow-close-toilet-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-SC-001-DEF",
+    "price_cents": 18900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 17388
+      }
+    ]
+  },
+  {
+    "id": "var-slim-d-shape-seat",
+    "product_id": "prod-slim-d-shape-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-SD-002-DEF",
+    "price_cents": 22900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 21068
+      }
+    ]
+  },
+  {
+    "id": "var-heavy-duty-commercial-seat",
+    "product_id": "prod-heavy-duty-commercial-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-HD-003-DEF",
+    "price_cents": 31900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 29348
+      }
+    ]
+  },
+  {
+    "id": "var-bidet-attachment-kit",
+    "product_id": "prod-bidet-attachment-kit",
+    "name": "ברירת מחדל",
+    "sku": "TS-BA-004-DEF",
+    "price_cents": 28900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 26588
+      }
+    ]
+  },
+  {
+    "id": "var-cover-baby-adapter-seat",
+    "product_id": "prod-cover-baby-adapter-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-BB-005-DEF",
+    "price_cents": 15900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 14628
+      }
+    ]
+  },
+  {
+    "id": "var-duroplast-soft-seat",
+    "product_id": "prod-duroplast-soft-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-DP-006-DEF",
+    "price_cents": 19900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 18308
+      }
+    ]
+  },
+  {
+    "id": "var-elongated-premium-seat",
+    "product_id": "prod-elongated-premium-seat",
+    "name": "ברירת מחדל",
+    "sku": "TS-EP-007-DEF",
+    "price_cents": 24900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 22908
+      }
+    ]
+  },
+  {
+    "id": "var-triple-stage-filter-kit",
+    "product_id": "prod-triple-stage-filter-kit",
+    "name": "ברירת מחדל",
+    "sku": "FW-TS-001-DEF",
+    "price_cents": 41900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 38548
+      }
+    ]
+  },
+  {
+    "id": "var-uv-sterilizer-system",
+    "product_id": "prod-uv-sterilizer-system",
+    "name": "ברירת מחדל",
+    "sku": "FW-UV-002-DEF",
+    "price_cents": 87900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 80868
+      }
+    ]
+  },
+  {
+    "id": "var-whole-house-filter-1inch",
+    "product_id": "prod-whole-house-filter-1inch",
+    "name": "ברירת מחדל",
+    "sku": "FW-WH-003-DEF",
+    "price_cents": 62900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 57868
+      }
+    ]
+  },
+  {
+    "id": "var-under-sink-carbon-kit",
+    "product_id": "prod-under-sink-carbon-kit",
+    "name": "ברירת מחדל",
+    "sku": "FW-US-004-DEF",
+    "price_cents": 28900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 26588
+      }
+    ]
+  },
+  {
+    "id": "var-remineralization-cartridge",
+    "product_id": "prod-remineralization-cartridge",
+    "name": "ברירת מחדל",
+    "sku": "FW-RM-005-DEF",
+    "price_cents": 13900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 12788
+      }
+    ]
+  },
+  {
+    "id": "var-softener-resin-bag",
+    "product_id": "prod-softener-resin-bag",
+    "name": "ברירת מחדל",
+    "sku": "FW-SR-006-DEF",
+    "price_cents": 19900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 18308
+      }
+    ]
+  },
+  {
+    "id": "var-sediment-filter-5micron",
+    "product_id": "prod-sediment-filter-5micron",
+    "name": "ברירת מחדל",
+    "sku": "FW-SF-007-DEF",
+    "price_cents": 9900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 9108
+      }
+    ]
+  },
+  {
+    "id": "var-booster-pump-1hp",
+    "product_id": "prod-booster-pump-1hp",
+    "name": "ברירת מחדל",
+    "sku": "WP-BP-1HP-DEF",
+    "price_cents": 185000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 170200
+      }
+    ]
+  },
+  {
+    "id": "var-booster-pump-15hp",
+    "product_id": "prod-booster-pump-15hp",
+    "name": "ברירת מחדל",
+    "sku": "WP-BP-15H-DEF",
+    "price_cents": 214000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 196880
+      }
+    ]
+  },
+  {
+    "id": "var-circulation-pump-bronze",
+    "product_id": "prod-circulation-pump-bronze",
+    "name": "ברירת מחדל",
+    "sku": "WP-CP-BR-DEF",
+    "price_cents": 135000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 124200
+      }
+    ]
+  },
+  {
+    "id": "var-sewage-pump-stainless",
+    "product_id": "prod-sewage-pump-stainless",
+    "name": "ברירת מחדל",
+    "sku": "WP-SP-SS-DEF",
+    "price_cents": 268000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 246560
+      }
+    ]
+  },
+  {
+    "id": "var-multistage-pump-3hp",
+    "product_id": "prod-multistage-pump-3hp",
+    "name": "ברירת מחדל",
+    "sku": "WP-MP-3HP-DEF",
+    "price_cents": 312000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 287040
+      }
+    ]
+  },
+  {
+    "id": "var-garden-pump-jet",
+    "product_id": "prod-garden-pump-jet",
+    "name": "ברירת מחדל",
+    "sku": "WP-GP-JET-DEF",
+    "price_cents": 126000,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 115920
+      }
+    ]
+  },
+  {
+    "id": "var-pressure-tank-24l",
+    "product_id": "prod-pressure-tank-24l",
+    "name": "ברירת מחדל",
+    "sku": "WP-PT-024-DEF",
+    "price_cents": 58900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 54188
+      }
+    ]
+  },
+  {
+    "id": "var-total-pipe-wrench-18",
+    "product_id": "prod-total-pipe-wrench-18",
+    "name": "ברירת מחדל",
+    "sku": "TT-PW-018-DEF",
+    "price_cents": 13900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 12788
+      }
+    ]
+  },
+  {
+    "id": "var-total-press-tool-kit",
+    "product_id": "prod-total-press-tool-kit",
+    "name": "ברירת מחדל",
+    "sku": "TT-PT-KIT-DEF",
+    "price_cents": 98500,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 90620
+      }
+    ]
+  },
+  {
+    "id": "var-total-cutter-pex",
+    "product_id": "prod-total-cutter-pex",
+    "name": "ברירת מחדל",
+    "sku": "TT-CP-PEX-DEF",
+    "price_cents": 8900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 8188
+      }
+    ]
+  },
+  {
+    "id": "var-total-heat-gun-2000w",
+    "product_id": "prod-total-heat-gun-2000w",
+    "name": "ברירת מחדל",
+    "sku": "TT-HG-2000-DEF",
+    "price_cents": 18900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 17388
+      }
+    ]
+  },
+  {
+    "id": "var-total-multi-meter",
+    "product_id": "prod-total-multi-meter",
+    "name": "ברירת מחדל",
+    "sku": "TT-MM-001-DEF",
+    "price_cents": 15900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 14628
+      }
+    ]
+  },
+  {
+    "id": "var-total-laser-level",
+    "product_id": "prod-total-laser-level",
+    "name": "ברירת מחדל",
+    "sku": "TT-LL-002-DEF",
+    "price_cents": 32900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 30268
+      }
+    ]
+  },
+  {
+    "id": "var-total-pliers-set",
+    "product_id": "prod-total-pliers-set",
+    "name": "ברירת מחדל",
+    "sku": "TT-PL-SET-DEF",
+    "price_cents": 21900,
+    "currency": "ILS",
+    "barcode": null,
+    "variant_prices": [
+      {
+        "price_group": "installer",
+        "price_cents": 20148
+      }
+    ]
+  }
+]

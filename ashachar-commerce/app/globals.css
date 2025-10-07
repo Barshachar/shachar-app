@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: 'Heebo', ui-sans-serif, system-ui;
+  background-color: theme('colors.slate.50');
+  color: theme('colors.slate.900');
+  direction: rtl;
+}
+
+a {
+  @apply text-emerald-700 hover:text-emerald-900 transition-colors;
+}

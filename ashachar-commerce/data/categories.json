@@ -1,0 +1,86 @@
+[
+  {
+    "id": "cat-plumbing",
+    "name": "צנרת ואביזרי מים",
+    "slug": "plumbing",
+    "image_url": "/categories/plumbing.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-faucets",
+    "name": "ברזים ואביזרי רחצה",
+    "slug": "faucets",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-concealed-cisterns",
+    "name": "ניאגרות סמויות",
+    "slug": "concealed-cisterns",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-plasson-fittings",
+    "name": "אביזרי פלסון",
+    "slug": "plasson-fittings",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-lipsky-drainage",
+    "name": "פתרונות ניקוז ליפסקי",
+    "slug": "lipsky-drainage",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-sp-pex",
+    "name": "SP PEX מערכות",
+    "slug": "sp-pex",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-ppr-multilayer",
+    "name": "מערכות PPR/רב שכבתי",
+    "slug": "ppr-multilayer",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-sinks-cheres",
+    "name": "כיורים ואמבטיות",
+    "slug": "sinks-cheres",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-toilet-seats",
+    "name": "מושבי אסלה ואביזרים",
+    "slug": "toilet-seats",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-filters-water-systems",
+    "name": "סינון מערכות מים",
+    "slug": "filters-water-systems",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-water-pumps",
+    "name": "משאבות מים",
+    "slug": "water-pumps",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  },
+  {
+    "id": "cat-total-tools",
+    "name": "כלי עבודה Total Tools",
+    "slug": "total-tools",
+    "image_url": "/placeholders/p0.png",
+    "parent_id": null
+  }
+]

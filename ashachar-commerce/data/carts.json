@@ -1,0 +1,67 @@
+[
+  {
+    "id": "895200cd-866e-4552-94ba-95e61263c368",
+    "session_id": "34fbc2dd-bc6c-48cf-bea5-e28fa8edf20a",
+    "items": [
+      {
+        "id": "76e17cd1-13eb-4b9e-8771-3b962b79d04b",
+        "variant_id": "var-pullout-default",
+        "qty": 1
+      },
+      {
+        "id": "9b0ee4b2-1921-4e8c-8ef9-3364a6d4eb9a",
+        "variant_id": "var-pullout-faucet-pro",
+        "qty": 4
+      }
+    ]
+  },
+  {
+    "id": "5dc986f9-632a-4e6a-a8f2-da0cfb6894c9",
+    "session_id": "ad1283d9-f202-47c2-93bd-d7bd4ed01684",
+    "items": [
+      {
+        "id": "382fe600-88b0-4570-8b28-8426376f684c",
+        "variant_id": "var-copper-pipe-16mm",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": "b98f00e7-213e-4cd9-a297-c21cf33df11d",
+    "session_id": "62bbb3b3-7e6d-4299-8074-9fbd4ec577d0",
+    "items": [
+      {
+        "id": "455c0dca-af21-425e-b374-88f05082af37",
+        "variant_id": "var-copper-pipe-16mm",
+        "qty": 1
+      },
+      {
+        "id": "bbd57a05-ea31-456b-a6e7-20dbf524313c",
+        "variant_id": "v_pullout_faucet_pro_default",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": "2d770e31-9433-43af-8589-e21afc0d0dc4",
+    "session_id": "843ce928-5a03-4e22-8ac2-f0b9d06d0698",
+    "items": [
+      {
+        "id": "f78a9c3a-e2ef-4777-818b-ec0d9d322715",
+        "variant_id": "v_pullout_faucet_pro_default",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": "4645faca-1ace-4d4f-89be-fca66c14c8a8",
+    "session_id": "583636a2-42ea-4521-8162-17f96cf2ffe5",
+    "items": [
+      {
+        "id": "8b5bf193-51ec-4818-82c5-67be48b353c1",
+        "variant_id": "var-total-pliers-set",
+        "qty": 4
+      }
+    ]
+  }
+]

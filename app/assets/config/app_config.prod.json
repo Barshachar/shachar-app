@@ -1,0 +1,12 @@
+{
+  "env": "prod",
+  "supabaseUrl": "https://YOUR-PROD-SUPABASE",
+  "supabaseAnonKey": "YOUR-PROD-ANON-KEY",
+  "sentryDsn": "",
+  "debug": false,
+  "features": {
+    "debug": false,
+    "offlinePricingFallback": false,
+    "allowCheckoutWhenPricingUnavailable": false
+  }
+}

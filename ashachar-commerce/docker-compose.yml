@@ -1,0 +1,20 @@
+services:
+  web:
+    build: .
+    container_name: ashachar-web
+    environment:
+      APP_DATA_MODE: local
+      PORT: 3000
+    volumes:
+      - ./data:/app/data
+  caddy:
+    image: caddy:2
+    container_name: ashachar-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data:/app/data
