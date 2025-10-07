@@ -7,7 +7,7 @@ Widget makeTestApp(
   Widget child, {
   GoRouter? router,
   Locale locale = const Locale('he'),
-  List<Override> overrides = const [],
+  List<Object?> overrides = const [],
   List<LocalizationsDelegate<dynamic>> extraDelegates = const [],
   List<Locale> extraSupportedLocales = const [],
 }) {
@@ -47,7 +47,7 @@ Widget makeTestApp(
   ];
 
   return ProviderScope(
-    overrides: overrides,
+    overrides: overrides.cast(),
     child: MaterialApp.router(
       locale: locale,
       supportedLocales: locales,

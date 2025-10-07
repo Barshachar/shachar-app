@@ -191,7 +191,37 @@ Future<void> pumpQuickOrderWithRows(
   await tester.pumpAndSettle();
   final dynamic state = seedQuickOrderRows(tester, rows);
   state.debugSetResults(results);
+  final String companyId = state.ref.read(quickOrderCompanyIdProvider);
+  assert(
+    companyId.isNotEmpty,
+    'quickOrderCompanyIdProvider returned empty company id in tests',
+  );
+  if (companyId.isNotEmpty) {
+    await state.ref
+        .read(quickOrderCompanyCatalogProvider(companyId).future)
+        .catchError((_) => null);
+    final AsyncValue<Set<String>?> catalogState =
+        state.ref.read(quickOrderCompanyCatalogProvider(companyId));
+    assert(
+      catalogState.maybeWhen(
+        data: (catalog) => catalog != null,
+        orElse: () => false,
+      ),
+      'quickOrderCompanyCatalogProvider did not resolve in test harness',
+    );
+  }
   await tester.pumpAndSettle();
+  final dynamic firstRow = rows.isNotEmpty ? rows.first : null;
+  final String? variantId = firstRow?.match?.variant?.id as String?;
+  if (variantId != null) {
+    assert(
+      find
+          .byKey(ValueKey('qo_row_not_in_catalog_$variantId'))
+          .evaluate()
+          .isNotEmpty,
+      'Quick order review is missing not-in-catalog chip for $variantId',
+    );
+  }
 }
 
 Finder findQuickOrderReviewTable() => find.byType(DataTable);

@@ -2431,6 +2431,11 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
       }
       setState(() {
         _bulkRows = List<_BulkReviewRow>.from(rows.cast<_BulkReviewRow>());
+        if (_bulkRows.isNotEmpty) {
+          _bulkError = null;
+          _bulkInfoMessage = _buildReviewInfo(_summarizeRows(_bulkRows));
+          _stage = QuickOrderStage.review;
+        }
       });
       return true;
     }());
