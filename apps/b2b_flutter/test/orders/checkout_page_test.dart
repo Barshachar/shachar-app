@@ -3,8 +3,10 @@ import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/order_approval_state.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/cart_line.dart';
+import 'package:ashachar_marketplace/src/features/orders/domain/checkout_options.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/cart_controller.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/checkout_page.dart';
+import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../test_utils/fake_session_controller.dart';
 import '../test_utils/offline_supabase.dart';
 import '../test_harness.dart';
+import '../fakes/fake_price_service.dart';
 
 void main() {
   setUpAll(() async {
@@ -36,6 +39,33 @@ void main() {
       variantSku: 'SPIN-001',
     ),
   ];
+  const CheckoutFormOptions sampleOptions = CheckoutFormOptions(
+    billToAccounts: <CheckoutAccountOption>[
+      CheckoutAccountOption(
+        id: 'billto-1',
+        title: 'Acme HQ',
+        subtitle: 'Finance Dept',
+        addressLine: '123 Market St',
+      ),
+    ],
+    shipToLocations: <CheckoutLocationOption>[
+      CheckoutLocationOption(
+        id: 'shipto-1',
+        label: 'Main Warehouse',
+        addressLine: '456 Supply Ave',
+        notes: 'Dock 3',
+      ),
+    ],
+    paymentTerms: <CheckoutPaymentTermOption>[
+      CheckoutPaymentTermOption(
+        id: 'term-1',
+        code: 'NET30',
+        label: 'Net 30',
+        description: 'Invoice due in 30 days',
+        netDays: 30,
+      ),
+    ],
+  );
 
   Widget buildScope({
     required OrderApprovalState approvalState,
@@ -56,6 +86,12 @@ void main() {
         quickOrderCompanyIdProvider.overrideWithValue('COMP-1'),
         sessionControllerProvider.overrideWith(
           (ref) => FakeSessionController(_fakeSession()),
+        ),
+        checkoutFormOptionsProvider.overrideWith(
+          (Ref ref) async => sampleOptions,
+        ),
+        priceResolutionServiceProvider.overrideWithValue(
+          FakePriceResolutionService(catalog: const <String>{'variant-1'}),
         ),
         orderApprovalProvider.overrideWith(
           (Ref ref, String requestedOrderId) async {
@@ -80,7 +116,6 @@ void main() {
 
     await tester.pumpWidget(buildScope(approvalState: approvalState));
     await tester.pumpAndSettle();
-
     expect(
       find.byKey(const ValueKey('checkout_submit_btn')),
       findsOneWidget,
