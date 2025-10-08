@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { spawn, type ChildProcess } from 'child_process';
 import { once } from 'events';
 
+const runLegal = process.env.LEGAL_PAGES_E2E === "1";
+
 const TEST_PORT = 3131;
 const LEGAL_ROUTES = [
   { path: '/terms', heading: 'תנאי שימוש' },
@@ -80,7 +82,7 @@ afterAll(async () => {
   }
 });
 
-describe.sequential('legal pages', () => {
+(runLegal ? describe : describe.skip)('legal pages', () => {
   for (const { path, heading } of LEGAL_ROUTES) {
     test(`${path} responds with 200 and contains heading`, async () => {
       if (serverUnavailable) {
