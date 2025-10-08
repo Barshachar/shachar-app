@@ -1,9 +1,12 @@
 # Flutter/Dart
+/.dart_tool/
 .dart_tool/
 .packages
 .pub-cache/
+/build/
 build/
 flutter_*.log
+/coverage/
 coverage/
 app/ios/Flutter/Flutter.framework/
 app/ios/Pods/
@@ -32,3 +35,10 @@ supabase/.temp
 
 # zips
 *.zip
+
+/.flutter_local/
+.flutter_local/
+run_codex_expect.exp
+run_codex_overnight.sh
+run_codex_expect.exp
+run_codex_overnight.sh

@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { getServiceClient, jsonResponse, errorResponse } from '../_shared/client.ts';
 
-interface CsvRow {
+export interface CsvRow {
   variant_id: string;
   unit_price: string;
   min_qty?: string;
@@ -10,7 +10,7 @@ interface CsvRow {
   currency?: string;
 }
 
-function parseCsv(text: string): CsvRow[] {
+export function parseCsv(text: string): CsvRow[] {
   const lines = text.split(/\r?\n/).filter(Boolean);
   const [header, ...rows] = lines;
   const headers = header.split(',').map((h) => h.trim());

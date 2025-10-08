@@ -1,0 +1,52 @@
+[
+  {
+    "source": "apps/b2b_flutter/supabase",
+    "destination": "archive/.codex/apps_b2b_flutter_supabase",
+    "reason": "duplicate_supabase_project"
+  },
+  {
+    "source": "apps/web_pwa/supabase",
+    "destination": "archive/.codex/apps_web_pwa_supabase",
+    "reason": "duplicate_supabase_project"
+  },
+  {
+    "source": "logs/codex.pid",
+    "destination": "archive/.codex/logs/codex.pid",
+    "reason": "ephemeral_process_marker"
+  },
+  {
+    "source": "smoke_fixture.tmp",
+    "destination": "archive/.codex/tmp/smoke_fixture.tmp",
+    "reason": "ephemeral_test_artifact"
+  },
+  {
+    "source": ".dart-tool/dart-flutter-telemetry.log",
+    "destination": "archive/.codex/dart-tool/dart-flutter-telemetry.log",
+    "reason": "generated_telemetry_log"
+  },
+  {
+    "source": "apps/b2b_flutter/.env.json.bak",
+    "destination": "archive/.codex/config/.env.json.bak",
+    "reason": "stale_environment_backup"
+  },
+  {
+    "source": "apps/b2b_flutter/assets/config/app_config.json.bak",
+    "destination": "archive/.codex/config/app_config.json.bak",
+    "reason": "stale_configuration_backup"
+  },
+  {
+    "source": "apps/b2b_flutter/assets/config/app_config.json.save",
+    "destination": "archive/.codex/config/app_config.json.save",
+    "reason": "stale_configuration_backup"
+  },
+  {
+    "source": "docs/screens/orders/order_detail_20250928_092921.png",
+    "destination": "archive/.codex/docs/screens/orders/order_detail_20250928_092921.png",
+    "reason": "duplicate_timestamped_screenshot"
+  },
+  {
+    "source": "docs/screens/orders/orders_list_20250928_092920.png",
+    "destination": "archive/.codex/docs/screens/orders/orders_list_20250928_092920.png",
+    "reason": "duplicate_timestamped_screenshot"
+  }
+]

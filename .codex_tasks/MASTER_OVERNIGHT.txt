@@ -2,89 +2,89 @@ TITLE: Overnight full enablement for Multi-Vendor B2B/B2C + In-App Agent (Supaba
 
 SCOPE (from “תכנון אפליקציה מולטי-וונדור” + “אפליקציית B2B מושלמת”):
 - Multi-Vendor B2B:
-  • ישויות: vendors, vendor_users, product_vendors, vendor_settings, payouts.
-  • הפרדה/אבטחה: RLS רב-דיירים (vendor_slug), כל ונדור רואה/מנהל רק את שלו.
-  • קטלוג לכל ונדור, SKU mapping, MOQ/מינימום הזמנה.
-  • price lists לפי לקוח/קבוצות/וונדור; טירים/הנחות.
-  • זרימות B2B: Quick-Order (SKU+Qty), Quote→Order, Approvals, Budget/credit limit, Returns/Credit notes.
-  • “החנות שלי” לוונדור: KPIs, מוצרים מובילים, מלאי נמוך, יצוא CSV; payouts לתקופות.
-- In-App AI Assistant:
-  • Agents SDK / Responses API.
-  • כלים: search_products, price_for_customer, create_order, update_order_status, get_vendor_kpis, File Search אם יש.
-  • Guardrails (לדוגמה: הנחה >X% דורשת אישור).
-  • UI צ’אט מיקרו-פרונטנד (Next.js) משובץ באפליקציה (WebView/iframe), עברית.
-- B2C Playbook (Flatsome/WordPress) — תיעוד בלבד:
-  • דף בית: מוצרים חמים/חדשים; כפתור WhatsApp; ללא כפתורי שיתוף בעמוד מוצר.
-  • פרפורמנס: LCP, Critical CSS, Fonts, Cache; WP-CLI ייצוא/ייבוא; Staging→Prod.
+  • entities: vendors, vendor_users, product_vendors, vendor_settings, payouts
+  • strict tenant isolation (RLS by vendor_slug)
+  • per-vendor catalog & SKU mapping; MOQ/min order rules
+  • price lists per customer/group/vendor; tiered discounts
+  • flows: Quick-Order (paste SKU/Qty), Quote→Order, Approvals, Budget/Credit limit, Returns/Credit notes
+  • “My Store” (vendor dashboard): daily KPIs, top products, low stock, CSV export; payouts per period
+- In-App AI Agent:
+  • Agents SDK / Responses API
+  • tools: search_products, price_for_customer, create_order, update_order_status, get_vendor_kpis (+ File Search if available)
+  • guardrails (e.g., discount >X% needs approval)
+  • web chat micro-frontend (Next.js) embedded in app (WebView/iframe), Hebrew copy
+- B2C Playbook (Flatsome/WordPress) — docs only:
+  • homepage sections: hot/new, WhatsApp CTA; no share buttons on product page
+  • performance: LCP, critical CSS, fonts, caching; WP-CLI export/import; safe Staging→Prod
 
 CONSTRAINTS:
-- ללא DROP; רק CREATE IF NOT EXISTS / ALTER ADD.
-- לא מכניסים סודות ל-git; לעדכן .gitignore.
-- עבודה בענף codex/overnight-{{today}}; קומיטים קטנים; לוגים לכל שלב.
-- Python 3.11 אם קיים; אחרת system python3; eval_type_backport לתאימות py<3.10.
+- Non-destructive: no DROP; only CREATE IF NOT EXISTS / ALTER ADD
+- Never commit secrets (.env/keys), update .gitignore
+- Work in branch codex/overnight-{{today}}; many small commits; logs for each step
+- Use Python 3.11 if present, else system python3; add eval_type_backport for py<3.10 typing
 
 STEPS:
 
 1) Repo & Env
-- יצירת/מעבר לענף codex/overnight-{{today}}.
-- .gitignore ל-.env, .venv, node_modules, build, logs, dist, .dart_tool.
-- rebuild .venv; pip install -r requirements.txt + eval_type_backport.
-- ודא agent/__init__.py; bin/run_agent.command יריץ "python -m agent.run_agent".
+- create/switch to branch codex/overnight-{{today}}
+- .gitignore excludes: .env, .venv, node_modules, build, dist, logs, .dart_tool
+- rebuild .venv; pip install -r requirements.txt + eval_type_backport
+- ensure agent/__init__.py; make bin/run_agent.command run “python -m agent.run_agent”
 
-2) Agent Reliability (fallbacks)
-- agent/order_agent.py: הוסף "from __future__ import annotations".
-- price_for_customer: אם RPC נכשל → קרא price מ-products (REST); החזר {"sku","customer_id","price","currency":"ILS"}.
-- create_order: אם RPC נכשל → POST orders + order_items (REST) עם price מ-products; החזר {"order_id","customer_id","total","items"}.
-- agent/run_agent.py: תמיכת --once/--prompt לסמוק לא-אינטראקטיבי; שגיאות ברורות בעברית.
+2) Agent reliability (fallbacks)
+- agent/order_agent.py: add “from __future__ import annotations”
+- price_for_customer: if RPC /rest/v1/rpc/price_for_customer fails → read price from products (REST); return {"sku","customer_id","price","currency":"ILS"}
+- create_order: if RPC fails → POST orders + order_items (REST), compute price from products; return {"order_id","customer_id","total","items"}
+- agent/run_agent.py: add --once/--prompt for non-interactive smoke in Hebrew; friendly error messages
 
-3) Supabase Schema (מינימלי, לא הורס)
-- צור אם חסר:
-  vendors(slug pk, name, status default 'active', created_at),
-  vendor_users(vendor_slug fk, user_id text, role text default 'member', primary key (vendor_slug,user_id)),
-  product_vendors(sku text, vendor_slug text, primary key (sku,vendor_slug)),
-  vendor_settings(vendor_slug fk, settings jsonb, updated_at timestamptz),
-  payouts(id uuid pk, vendor_slug fk, period_start, period_end, amount numeric, currency text default 'ILS', status text default 'draft', created_at).
-- אינדקסים; RLS stubs לפי vendor_slug; ENABLE RLS.
-- Seed אם צריך: vendors('ashachar'), categories('uncategorized'), brands('generic').
-- Upsert demo product SP-NTM-32 price 12.90 slug sp-ntm-32 mapped to 'ashachar'.
+3) Supabase schema (minimal, non-destructive)
+- create if missing:
+  vendors(slug pk, name, status default 'active', created_at);
+  vendor_users(vendor_slug fk, user_id text, role text default 'member', primary key(vendor_slug,user_id));
+  product_vendors(sku text, vendor_slug text, primary key(sku,vendor_slug));
+  vendor_settings(vendor_slug fk, settings jsonb, updated_at);
+  payouts(id uuid pk, vendor_slug fk, period_start, period_end, amount numeric, currency text default 'ILS', status text default 'draft', created_at);
+- indexes; enable RLS + base policies by vendor_slug
+- seed lookups if needed: vendors('ashachar'), categories('uncategorized'), brands('generic')
+- upsert demo product SP-NTM-32 price 12.90 slug sp-ntm-32 mapped to 'ashachar'
 
 4) App (B2B “מושלם”)
-- Quick-Order (הדבקת רשימת SKU/Qty).
-- Offline-first: קאשינג רשימות/עגלה; תור כתיבות לסנכרון ברגע אונליין.
-- “החנות שלי” לוונדור: KPIs יומיים, מוצרים מובילים, מלאי נמוך, יצוא CSV.
-- Role-based UI (buyer/manager/vendor/admin); מסכי Approvals להנחות חריגות.
-- בדיקות לרפו/שירותים (mock Supabase client); lint (dart analyze / npm test לפי הפרויקט).
+- Quick-Order (paste SKU/Qty)
+- Offline-first: cache lists/cart; queue writes for sync on reconnect
+- “My Store” (vendor): daily KPIs, top products, low stock, CSV export
+- Role-based UI (buyer/manager/vendor/admin); approvals UI for exceeding discount policy
+- tests: repository/service with mocked Supabase; lint (dart analyze / npm test as applicable)
 
 5) Admin Panel
-- ניהול משתמשים (invite/deactivate/reactivate) עם audit.
-- Orders grid עם פילטרים לפי vendor/customer/status; יצוא CSV.
-- Guardrail policy config (הנחות> X% דורשות אישור) — רק תשתית + TODO hook.
+- user management (invite/deactivate/reactivate) w/ audit
+- Orders grid with filters (vendor/customer/status) + CSV export
+- guardrail policy config (discounts > X% require approval) — infra + TODO hook
 
 6) In-App AI Assistant
-- ספריית ai/assistant/ (שרת קטן ב-Python/Node) עם Agents SDK/Responses API.
-- חיבור כלים ל-Supabase REST: search_products, price_for_customer, create_order, update_order_status, get_vendor_kpis (+File Search אם יש).
-- ai/chat-ui (Next.js) על פורט 3100; להטמיע כ-WebView/iframe במסך /assistant.
-- README הפעלה מקומית; סודות בצד שרת בלבד.
+- ai/assistant/ (Python/Node tiny server) using Agents SDK/Responses API
+- wire tools to Supabase REST: search_products, price_for_customer, create_order, update_order_status, get_vendor_kpis (+ File Search if vector store present)
+- ai/chat-ui (Next.js) on port 3100; embed via WebView/iframe at /assistant
+- README run locally; secrets server-side only
 
 7) Evals (trace grading)
-- docs/evals/orders_eval.yaml עם ~10 פרומפטים בעברית (מחיר, פתיחת הזמנה, חריגה, מלאי חסר).
-- סקריפט להרצה; פלט ל-logs/evals-{{timestamp}}.md; שיפור prompt אם צריך; קומיט סיכום.
+- docs/evals/orders_eval.yaml with ~10 Hebrew prompts (pricing/order/approval/stock)
+- script to run; output logs/evals-{{timestamp}}.md
+- iterate prompt if fails; commit summary
 
-8) B2C Playbook (Flatsome; תיעוד בלבד)
-- docs/wp_b2c_playbook.md: דף בית (חמים/חדשים), WhatsApp CTA, אין שיתוף בעמוד מוצר, פרפורמנס (LCP/CSS/Fonts/Cache), WP-CLI סניפטים, Staging→Prod.
+8) B2C Playbook (docs only)
+- docs/wp_b2c_playbook.md: homepage hot/new, WhatsApp CTA, no product share buttons, perf (LCP/CSS/fonts/cache), WP-CLI snippets, Staging→Prod
 
 9) Cleanup & Tooling
-- ניקוי קבצים מתים; pre-commit (black/isort/ruff או linters רלוונטיים; dart format).
-- Secret scan בסיסי; ודא .env לא נכנס ל-git.
-- Feature flags אם יש.
+- remove dead files; pre-commit (black/isort/ruff or relevant linters; dart format)
+- secret scan; ensure .env ignored
+- feature flags if present
 
 10) Smoke + Summary
 - python -m agent.run_agent --once --prompt "פתח הזמנה ל-5 יחידות של SP-NTM-32 ללקוח 123."
-- docs/overnight_summary.md: מה השתנה, TODO board (עדיפויות/בעלים placeholders).
-- לוגים לכל שלב תחת logs/*.log.
+- docs/overnight_summary.md: what changed, TODO board (priority/owner placeholders)
+- all step logs into logs/*.log
 
 NOTES:
-- OPENAI_API_KEY מהסביבה; לא להדפיס מפתחות בלוגים.
-- אם FKs חוסמים seed → קודם upsert lookups ואז ניסיון חוזר.
-- עברית בתשובות משתמש; הערות קוד תמציתיות.
-
+- OPENAI_API_KEY from environment only; never log keys
+- If FKs block seed: upsert lookups first then retry
+- Hebrew UX copy where applicable; concise code comments

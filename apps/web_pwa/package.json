@@ -1,0 +1,43 @@
+{
+  "name": "ashachar-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3003}",
+    "serve:prod": "NODE_ENV=production PORT=${PORT:-3003} npm run start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "import:csv": "ts-node --compiler-options '{\"module\":\"commonjs\"}' ../../tools/snapshots/import-local-csv.ts",
+    "snap": "ts-node --compiler-options '{\"module\":\"commonjs\"}' ../../tools/snapshots/snap-admin.ts",
+    "snap:site": "ts-node --compiler-options '{\"module\":\"commonjs\"}' ../../tools/snapshots/snap-site.ts"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@supabase/supabase-js": "^2.42.0",
+    "clsx": "^2.0.0",
+    "next": "14.2.5",
+    "pdf-lib": "^1.17.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.19",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "autoprefixer": "^10.4.20",
+    "fast-xml-parser": "^4.5.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.5",
+    "jsdom": "^24.0.0",
+    "postcss": "^8.4.39",
+    "puppeteer": "^24.23.0",
+    "tailwindcss": "^3.4.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,82 +1,113 @@
-# א.שחר Commerce (Next.js)
+# א.שחר Marketplace Monorepo
 
-פלטפורמת B2B/B2C מולטי־וונדור המבוססת על Next.js 14, Tailwind ו-Supabase. האתר מחליף את תצורת ה-WooCommerce הקיימת ומספק קטלוג מוצרים, עגלת קניות, תשלום Redirect ל-Cardcom ותמיכה מלאה ב-RTL.
+Monorepo עבור פלטפורמת ה-B2B/B2C של "א.שחר" הכולל את אפליקציית Flutter, ה-Web PWA ב-Next.js, סכימת Supabase וכלי תפעול.
+
+## מבנה הריפו
+```
+apps/
+  b2b_flutter/        # אפליקציית Flutter (מובייל + Flutter Web Admin)
+  web_pwa/            # Next.js 14 Storefront & Admin PWA
+packages/
+  dart/design_system/ # קומפוננטים משותפים ל-Flutter
+  dart/offline_toolkit/# Offline-first primitives (Hive/Drift/Workmanager)
+  ts/web_ui/          # OG image template ו-UI משותף לצד ה-Web
+supabase/
+  sql/                # סכימה, מדיניות RLS ו-Patches
+  functions/          # Edge Functions (Deno)
+  tests/              # רגרסיות RLS (psql)
+  environments/       # overrides (למשל staging)
+tools/
+  qa/                 # סקריפטים ל-QA ו-Simulator
+  ci/                 # סקריפטי CI
+  snapshots/          # לכידת מצבים (ts-node)
+  imports/            # כלי CLI לייבוא (עם לוגים)
+docs/                 # ADRs, ERD, Offline, Architecture & Security Reports
+codex/                # דוחות אוטומטיים (AUDIT, SECURITY, EXECUTION)
+```
 
 ## דרישות מוקדמות
+- Flutter 3.16+ (channel stable) + Xcode/Android SDK לפי צורך
+- Node.js 20+
+- Deno 1.46+ (Edge Function tests)
+- Supabase CLI (אופציונלי לניהול DB מקומי)
 
-- Node.js 18+
-- Supabase Project (Postgres + RLS)
-- Cardcom Page Redirect (דף 4) עם Success/Error/Notify URLs מוגדרים
+---
 
-## התקנה והפעלה
+## הפעלת האפליקציות
 
+### Flutter — `apps/b2b_flutter`
 ```bash
-npm install
-npm run dev
+cd apps/b2b_flutter
+flutter pub get
+flutter run   # או flutter build web --release
+```
+משתני סביבת Flutter נשמרים ב-`.env.json`. הקפידו להגדיר URL ו-Key של Supabase, וערכי demo ל-auth (לבדיקות מקומיות). 
+
+`offline_toolkit` מספק cache + sync queue. לצורך smoke tests:
+```bash
+flutter test test/smoke/app_smoke_test.dart
 ```
 
-### משתני סביבה
+#### Widget Tests & Harness
+- עטפו ווידג'טים ב-`makeTestApp` (`test/test_harness.dart`) כדי לקבל `ProviderScope`, `MaterialApp.router` עם GoRouter מינימלי ותמיכה ב-RTL/i18n.
+- ניתן להוסיף overrides דרך הפרמטר `overrides` ולצרף delegate-ים נוספים באמצעות `extraDelegates`.
+- לשירותי תמחור/קטלוג השתמשו ב-`FakePriceResolutionService` ו-`FakeCatalogRepository` מתוך `test/fakes/` כדי למנוע גישות ל-Supabase בזמן הרצה.
 
-העתיקו את `.env.example` ל-`.env.local` ועדכנו את הערכים:
+### Next.js PWA — `apps/web_pwa`
+```bash
+cd apps/web_pwa
+npm ci
+npm run dev          # dev server על 3003
+npm run lint         # Next lint
+npm test             # Vitest (כולל smoke + RLS policies)
+npm run build
+```
+העתיקו `.env.example` ל-`.env.local` והגדירו מפתחות Supabase ו-Cardcom.
 
-```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE=...
-SESSION_COOKIE_NAME=ashachar_sid
-SITE_NAME=א.שחר • אינסטלציה סיטונאית
-SITE_PHONE=08-933-1441
-SITE_ADDRESS=הירקון 13, יבנה
-CARD_COM_PAGE_URL=https://secure.cardcom.solutions/e/<CARD_PAGE>/
-CARD_COM_SUCCESS_URL=https://localhost:3000/success
-CARD_COM_ERROR_URL=https://localhost:3000/fail
-```
+---
 
 ## Supabase
+1. פריסה ידנית:
+   ```bash
+   psql "$SUPABASE_DB" -f supabase/sql/schema.sql
+   psql "$SUPABASE_DB" -f supabase/sql/policies.sql
+   psql "$SUPABASE_DB" -f supabase/seed.sql
+   ```
+2. רגרסיות RLS:
+   ```bash
+   psql "$SUPABASE_DB" -f supabase/tests/rls_regressions.sql
+   ```
+   התסריט מאשש שוונדורים/לקוחות אינם חוצים tenants.
+3. Edge Functions (Deno):
+   ```bash
+   deno task deploy # או supabase functions deploy <name>
+   deno test supabase/functions
+   ```
 
-1. הריצו את קבצי ה-SQL תחת `supabase/schema.sql`, `supabase/policies.sql` ו-`supabase/seed.sql` בממשק ה-SQL של Supabase לפי הסדר.
-2. וודאו שקיימות המדיניות (RLS) וש-RPC `cart_with_prices` ו-`add_to_cart` זמינים. הקוד משתמש ב-`cart_items_view` לצורך הצגת פריטים עם נתוני וריאנט.
-3. הוסיפו את Notify URL של Cardcom ל-`/api/cardcom/webhook`.
+---
 
-## מבנה פרויקט
+## כלי CLI
+- `tools/qa/qa-run.sh` – הרצה מלאה של בדיקות Flutter + סימולציות.
+- `tools/imports/catalog_delta_import.mjs` – סריקת CSV לייבוא קטלוג, כתיבת סיכום ל-`logs/imports/`:
+  ```bash
+  node tools/imports/catalog_delta_import.mjs --input path/to/catalog.csv
+  ```
+- `tools/snapshots/*` – לכידת מסכי Web/Flutter דרך ts-node.
 
-```
-app/              # Next.js App Router (עמודים, API Routes, מטאדאטה)
-components/       # קומפוננטים מונחי מחיר/Vendor/Cart
-lib/              # לוגיקה עסקית: Supabase, תמחור, Cardcom, Session
-public/           # תמונות הירו, קטגוריות וספקים
-supabase/         # סכימה, מדיניות RLS ונתונים לדמו
-tests/            # בדיקות Vitest (Formatter, Cardcom, Pricing, RLS)
-```
+---
 
-## בדיקות
+## CI
+קובץ Workflow חדש: `.github/workflows/ci.yml`
+- **Flutter**: `flutter pub get`, `flutter analyze`, `flutter test` בתוך `apps/b2b_flutter`.
+- **Web PWA**: `npm ci`, `npm run lint`, `npm test` בתוך `apps/web_pwa`.
+- **Edge Functions**: `deno test supabase/functions`.
 
-```bash
-npm run test
-```
+---
 
-הבדיקות מכסות:
+## תיעוד נוסף
+- `docs/ARCHITECTURE_REVIEW.md` – סקירת ארכיטקטורה (Flutter + Supabase) + TODOs.
+- `codex/SECURITY_REPORT.md` – מצב RLS + המלצות.
+- `docs/offline.md` – אסטרטגיית Offline-first וחיבורים ל-`offline_toolkit`.
+- `docs/ADRs/` – החלטות ארכיטקטורה (Flutter Web Admin, Clean Architecture וכו').
 
-- `formatILS` – עמידה בפרמטר מטבע (ILS).
-- `buildCardcomRedirect` – וידוא פרמטרי Redirect לסליקה.
-- `pricing` – חישוב מחירי B2B/B2C ועמידה בדרישות Tier.
-- `supabase/policies.sql` – בדיקת רגרסיית RLS (הפעלת RLS על cart + public read על מוצרים).
-
-## זרימת תשלום (Cardcom)
-
-1. העגלה נשמרת בקוקי (`SESSION_COOKIE_NAME`) ומאוכלסת דרך `api/cart/*`.
-2. `POST /api/checkout` יוצר הזמנה במצב `pending` ומחזיר Redirect לדף Cardcom עם פרמטר ReturnData = `order_id=<uuid>`.
-3. `POST /api/cardcom/webhook` מקבל Form-Data מ-Cardcom, קורא את `ResponseCode`, ומעדכן את סטטוס ההזמנה ל-`paid`/`failed`.
-4. עמודי `/success` ו-`/fail` משמשים נחיתה לאחר התשלום.
-
-## RTL + B2B/B2C
-
-- כל הדפים מוגדרים `lang="he" dir="rtl"` ומבוססי Heebo.
-- המחירים ניתנים למיתוג B2C/B2B דרך `PricingModeProvider` ו-`PricingModeToggle`.
-- קומפוננטת `<Price />` מציגה ₪ בשפה העברית.
-
-## שלבים הבאים
-
-- חיבור התחברות עסקים (Supabase Auth + price_group פר חשבון).
-- חיזוק RLS לעומק (קישור cart/order ל-`auth.uid`).
-- בדיקות אינטגרציה מול Cardcom Sandbox לפני העלאה לפרודקשן.
+תרומות: פתחו Branch, הריצו את ה-CI הלוקלי (`flutter test`, `npm test`, `deno test`), ודאגו להוסיף בדיקות/תיעוד לפי הצורך.

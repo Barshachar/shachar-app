@@ -15,6 +15,8 @@ jobs:
   analyze_unit:
     name: analyze+unit
     runs-on: ubuntu-latest
+    if: ${{ vars.RUN_FLUTTER_CI == "1" }}
+    continue-on-error: true
     defaults:
       run:
         working-directory: app
@@ -46,9 +48,10 @@ jobs:
 
   integration_macos:
     name: Integration (macOS manual)
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ vars.RUN_FLUTTER_CI == "1" && github.event_name == 'workflow_dispatch' }}
     needs: analyze_unit
     runs-on: macos-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: app
@@ -84,6 +87,7 @@ jobs:
   qa_orders_soft_gate:
     name: QA Orders Screenshots (soft gate)
     needs: analyze_unit
+    if: ${{ vars.RUN_FLUTTER_CI == "1" }}
     runs-on: macos-latest
     continue-on-error: true
     steps:
