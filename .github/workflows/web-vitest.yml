@@ -17,7 +17,7 @@ jobs:
           cache-dependency-path: apps/web_pwa/package-lock.json
       - name: Install
         working-directory: apps/web_pwa
-        run: npm ci
+        run: npm ci || npm install
       - name: Vitest
         working-directory: apps/web_pwa
         run: npx vitest run
