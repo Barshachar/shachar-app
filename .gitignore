@@ -40,3 +40,5 @@ supabase/.temp
 .flutter_local/
 run_codex_expect.exp
 run_codex_overnight.sh
+run_codex_expect.exp
+run_codex_overnight.sh
