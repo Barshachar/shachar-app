@@ -4,22 +4,65 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import type { PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
 
-const FONT_PATH = path.join(process.cwd(), 'public', 'fonts', 'NotoSansHebrew.ttf');
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 
-let cachedFont: Uint8Array | null = null;
+const DEFAULT_FONT_PATH = path.resolve(
+  process.cwd(),
+  'app',
+  'api',
+  'quote',
+  'fonts',
+  'Inter-Regular.ttf'
+);
 
-async function loadFont(): Promise<Uint8Array> {
-  if (!cachedFont) {
-    cachedFont = await fs.readFile(FONT_PATH);
+let cachedFontBytes: Uint8Array | null | undefined;
+
+async function tryLoadFontBytes(): Promise<Uint8Array | null> {
+  if (cachedFontBytes !== undefined) {
+    return cachedFontBytes;
   }
-  return cachedFont;
+
+  const candidatePaths: string[] = [];
+  if (process.env.PDF_FONT_PATH) {
+    candidatePaths.push(path.resolve(process.env.PDF_FONT_PATH));
+  }
+  candidatePaths.push(DEFAULT_FONT_PATH);
+  candidatePaths.push(
+    path.resolve(process.cwd(), 'public', 'fonts', 'NotoSansHebrew.ttf')
+  );
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      const stats = await fs.stat(candidatePath);
+      if (!stats.isFile() || stats.size === 0) {
+        continue;
+      }
+
+      const buffer = await fs.readFile(candidatePath);
+      if (buffer.length === 0) {
+        continue;
+      }
+
+      const bytes = new Uint8Array(
+        buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      );
+
+      cachedFontBytes = bytes;
+      return bytes;
+    } catch {
+      continue;
+    }
+  }
+
+  cachedFontBytes = null;
+  return null;
 }
 
 function parseSessionId(request: Request): string | null {
@@ -65,9 +108,15 @@ export async function POST(request: Request) {
   }
 
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
-  const regularFontBytes = await loadFont();
-  const regularFont = await pdfDoc.embedFont(regularFontBytes, { subset: true });
+
+  const regularFontBytes = await tryLoadFontBytes();
+  let regularFont: PDFFont;
+  if (regularFontBytes) {
+    pdfDoc.registerFontkit(fontkit);
+    regularFont = await pdfDoc.embedFont(regularFontBytes, { subset: true });
+  } else {
+    regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
   const monoFont = await pdfDoc.embedFont(StandardFonts.Courier);
 
   let activePage = pdfDoc.addPage();
