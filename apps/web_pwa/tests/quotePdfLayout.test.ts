@@ -10,8 +10,8 @@ import {
   resolveTableRightEdge,
   buildSummaryTextEntries,
   validateTableColumns
-} from '@/app/api/quote/route';
-import type { ColumnRect } from '@/app/api/quote/route';
+} from '@/app/api/quote/pdf-helpers';
+import type { ColumnRect } from '@/app/api/quote/pdf-helpers';
 import { stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
 import { formatILS } from '@/lib/formatter';
 import type { QuoteTotals } from '@/lib/quote';

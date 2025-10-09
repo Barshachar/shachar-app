@@ -7,7 +7,7 @@ import {
   formatCurrencyForPdf,
   computeColumnRectsForWidth,
   validateTableColumns
-} from '@/app/api/quote/route';
+} from '@/app/api/quote/pdf-helpers';
 import { formatILS } from '@/lib/formatter';
 import { computeTotals, type QuoteTotals } from '@/lib/quote';
 import { sanitizeNumberText } from '@/lib/pdf/rtl';

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { NUMERIC_COLUMN_KEYS, TABLE_COLUMNS } from '@/app/api/quote/route';
+import { NUMERIC_COLUMN_KEYS, TABLE_COLUMNS } from '@/app/api/quote/pdf-helpers';
 
 describe('quote PDF RTL layout', () => {
   test('uses prescribed RTL column order', () => {
