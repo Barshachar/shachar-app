@@ -1,3 +1,4 @@
-# Test Summary
+# Test Summary — 2025-10-09 17:32 UTC
 
-2025-10-09T06:20:28Z Test Files  17 passed | 1 skipped (18)
+## Web PWA (Vitest)
+- 17 passed | 1 skipped (18)
