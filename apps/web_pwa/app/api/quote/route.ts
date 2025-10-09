@@ -14,6 +14,32 @@ import { computeTotals } from '@/lib/quote';
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 const VAT_RATE = 0.17;
+const RTL_EMBED_START = '\u202B';
+const RTL_EMBED_END = '\u202C';
+
+const quantityFormatter = new Intl.NumberFormat('he-IL', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 3
+});
+
+const integerFormatter = new Intl.NumberFormat('he-IL', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+});
+
+const LRM_REGEX = /\u200e/g;
+
+function sanitizeNumberText(text: string): string {
+  return text.replace(LRM_REGEX, '');
+}
+
+function formatInteger(value: number): string {
+  return sanitizeNumberText(integerFormatter.format(value));
+}
+
+function formatQuantity(value: number): string {
+  return sanitizeNumberText(quantityFormatter.format(value));
+}
 
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
@@ -92,6 +118,16 @@ function formatDate(): string {
   }).format(new Date());
 }
 
+function wrapRtl(text: string): string {
+  return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
+}
+
+function assertIntegerCents(value: number, field: string): void {
+  if (!Number.isInteger(value)) {
+    throw new Error(`Expected ${field} to be an integer number of cents`);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     assertLocalMode();
@@ -166,12 +202,60 @@ export async function POST(request: Request) {
   cursorY -= dateSize + 18;
 
   const columns = [
-    { key: 'index', label: '#', width: 30, align: 'right' as const },
-    { key: 'name', label: 'מוצר', width: 240, align: 'right' as const },
-    { key: 'sku', label: 'מק"ט', width: 80, align: 'right' as const },
-    { key: 'qty', label: 'כמות', width: 60, align: 'right' as const },
-    { key: 'unit', label: 'מחיר יחידה', width: 110, align: 'right' as const },
-    { key: 'total', label: 'סה"כ', width: 110, align: 'right' as const }
+    {
+      key: 'index',
+      label: '#',
+      width: 30,
+      align: 'right' as const,
+      wrapHeader: false,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'name',
+      label: 'מוצר',
+      width: 240,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: true,
+      useMono: false
+    },
+    {
+      key: 'sku',
+      label: 'מק"ט',
+      width: 80,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: true
+    },
+    {
+      key: 'qty',
+      label: 'כמות',
+      width: 60,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'unit',
+      label: 'מחיר יחידה',
+      width: 110,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'total',
+      label: 'סה"כ',
+      width: 110,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    }
   ] as const;
 
   const totals = computeTotals(
@@ -210,9 +294,10 @@ export async function POST(request: Request) {
   const drawHeader = () => {
     columnRects = computeColumnRects();
     for (const column of columnRects) {
+      const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
       const textWidth = regularFont.widthOfTextAtSize(column.label, headerSize);
       const textX = column.align === 'right' ? column.right - textWidth : column.left;
-      activePage.drawText(column.label, {
+      activePage.drawText(headerText, {
         x: textX,
         y: cursorY,
         size: headerSize,
@@ -244,11 +329,12 @@ export async function POST(request: Request) {
     const unitPrice = item.variant.price_cents;
     const lineTotal = Math.round(unitPrice * item.qty);
 
+    const productName = item.product.name?.trim();
     const entries: Record<typeof columns[number]['key'], string> = {
-      index: String(index + 1),
-      name: item.product.name,
+      index: formatInteger(index + 1),
+      name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
-      qty: String(item.qty),
+      qty: formatQuantity(item.qty),
       unit: formatILS(unitPrice),
       total: formatILS(lineTotal)
     };
@@ -256,9 +342,10 @@ export async function POST(request: Request) {
     ensureSpace();
 
     for (const column of columnRects) {
-      const text = entries[column.key];
-      const fontToUse = column.key === 'sku' ? monoFont : regularFont;
-      const textWidth = fontToUse.widthOfTextAtSize(text, rowFontSize);
+      const baseText = entries[column.key];
+      const text = column.wrapValue ? wrapRtl(baseText) : baseText;
+      const fontToUse = column.useMono ? monoFont : regularFont;
+      const textWidth = fontToUse.widthOfTextAtSize(baseText, rowFontSize);
       const textX = column.align === 'right' ? column.right - textWidth : column.left;
       activePage.drawText(text, {
         x: textX,
@@ -272,10 +359,12 @@ export async function POST(request: Request) {
     cursorY -= lineHeight;
   });
 
-  const vatPercentText = new Intl.NumberFormat('he-IL', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0
-  }).format(VAT_RATE * 100);
+  const vatPercentText = sanitizeNumberText(
+    new Intl.NumberFormat('he-IL', {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0
+    }).format(VAT_RATE * 100)
+  );
 
   const summaryEntries = [
     { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
@@ -287,6 +376,10 @@ export async function POST(request: Request) {
     },
     { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
   ];
+
+  assertIntegerCents(totals.subtotal, 'subtotal');
+  assertIntegerCents(totals.vat, 'vat');
+  assertIntegerCents(totals.total, 'total');
 
   cursorY -= 10;
   for (const entry of summaryEntries) {
@@ -302,9 +395,10 @@ export async function POST(request: Request) {
       color: entry.color
     });
 
+    const labelText = wrapRtl(entry.label);
     const labelWidth = regularFont.widthOfTextAtSize(entry.label, entry.size);
     const labelX = valueX - 12 - labelWidth;
-    activePage.drawText(entry.label, {
+    activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
       size: entry.size,

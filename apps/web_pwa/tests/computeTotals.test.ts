@@ -45,6 +45,35 @@ describe('computeTotals', () => {
     expect(totals.total).toBe(390);
   });
 
+  test('handles large totals without losing precision', () => {
+    const totals = computeTotals(
+      [
+        { qty: 1200, unitPriceCents: 98765 },
+        { qty: 850.5, unitPriceCents: 43210 }
+      ],
+      0.17
+    );
+
+    const expectedSubtotal =
+      Math.round(1200 * 98765) + Math.round(850.5 * 43210);
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
+
+  test('does not mutate the provided items array', () => {
+    const items = [
+      { qty: 1.5, unitPriceCents: 1000 },
+      { qty: 2, unitPriceCents: 2500 }
+    ];
+    const snapshot = items.map((item) => ({ ...item }));
+
+    computeTotals(items, 0.17);
+
+    expect(items).toEqual(snapshot);
+  });
+
   test('throws when vat rate is invalid', () => {
     expect(() => computeTotals([{ qty: 1, unitPriceCents: 100 }], Number.NaN)).toThrow(
       /VAT rate must be a finite number/
