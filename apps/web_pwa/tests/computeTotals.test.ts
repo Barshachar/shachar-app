@@ -64,6 +64,18 @@ describe('computeTotals', () => {
     expect(totals.total).toBe(390);
   });
 
+  test('throws when a single line would exceed safe integer cents', () => {
+    expect(() =>
+      computeTotals([{ qty: 2, unitPriceCents: Number.MAX_SAFE_INTEGER }], 0.17)
+    ).toThrow(/safe integer number of cents/);
+  });
+
+  test('throws when the grand total would exceed safe integer cents', () => {
+    expect(() =>
+      computeTotals([{ qty: 1, unitPriceCents: Number.MAX_SAFE_INTEGER }], 1)
+    ).toThrow(/safe integer number of cents/);
+  });
+
   test('handles large totals without losing precision', () => {
     const totals = computeTotals(
       [

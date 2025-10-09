@@ -76,6 +76,18 @@ describe('quote PDF layout', () => {
     expect(() => buildSummaryTextEntries(totals, 0.17)).toThrow(/subtotal plus VAT/i);
   });
 
+  test('rejects summary totals that exceed safe integer cents', () => {
+    const subtotal = Number.MAX_SAFE_INTEGER;
+    const vat = 1;
+    const totals: QuoteTotals = {
+      subtotal,
+      vat,
+      total: subtotal + vat
+    };
+
+    expect(() => buildSummaryTextEntries(totals, 0.17)).toThrow(/safe integer number of cents/i);
+  });
+
   test('formatCurrencyForPdf wraps ILS and enforces integer cents', () => {
     const value = 12345;
     const formatted = formatCurrencyForPdf(value, 'test field');

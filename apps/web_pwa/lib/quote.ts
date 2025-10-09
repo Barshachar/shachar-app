@@ -15,6 +15,15 @@ function assertFiniteNumber(value: number, message: string): asserts value is nu
   }
 }
 
+function assertSafeIntegerCents(value: number, message: string): asserts value is number {
+  if (!Number.isInteger(value)) {
+    throw new Error(`${message} must be an integer number of cents`);
+  }
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(`${message} must be a safe integer number of cents`);
+  }
+}
+
 export function computeLineTotalCents(qty: number, unitPriceCents: number): number {
   assertFiniteNumber(qty, 'Item quantity must be a finite number');
   assertFiniteNumber(unitPriceCents, 'Item price must be a finite number');
@@ -25,16 +34,12 @@ export function computeLineTotalCents(qty: number, unitPriceCents: number): numb
   if (unitPriceCents < 0) {
     throw new Error('Item price must be non-negative');
   }
-  if (!Number.isInteger(unitPriceCents)) {
-    throw new Error('Item price must be an integer number of cents');
-  }
+  assertSafeIntegerCents(unitPriceCents, 'Item price');
 
-  const lineTotal = Math.round(unitPriceCents * qty);
-  assertFiniteNumber(lineTotal, 'Line total must be a finite number');
-
-  if (!Number.isInteger(lineTotal)) {
-    throw new Error('Line total must resolve to an integer number of cents');
-  }
+  const lineTotalRaw = unitPriceCents * qty;
+  assertFiniteNumber(lineTotalRaw, 'Line total must be a finite number');
+  const lineTotal = Math.round(lineTotalRaw);
+  assertSafeIntegerCents(lineTotal, 'Line total');
 
   return lineTotal;
 }
@@ -50,10 +55,18 @@ export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number):
   for (const item of items) {
     const lineTotal = computeLineTotalCents(item.qty, item.unitPriceCents);
     subtotal += lineTotal;
+    assertSafeIntegerCents(subtotal, 'Subtotal');
   }
 
-  const vat = Math.round(subtotal * vatRate);
+  assertSafeIntegerCents(subtotal, 'Subtotal');
+
+  const vatRaw = subtotal * vatRate;
+  assertFiniteNumber(vatRaw, 'VAT amount must be a finite number');
+  const vat = Math.round(vatRaw);
+  assertSafeIntegerCents(vat, 'VAT amount');
+
   const total = subtotal + vat;
+  assertSafeIntegerCents(total, 'Total amount');
 
   return {
     subtotal,

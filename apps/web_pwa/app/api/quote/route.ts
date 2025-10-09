@@ -302,6 +302,9 @@ function assertIntegerCents(value: number, field: string): void {
   if (!Number.isInteger(value)) {
     throw new Error(`Expected ${field} to be an integer number of cents`);
   }
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(`Expected ${field} to be a safe integer number of cents`);
+  }
 }
 
 export function formatCurrencyForPdf(valueCents: number, field: string): string {
