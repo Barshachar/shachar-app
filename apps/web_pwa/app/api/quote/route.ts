@@ -53,9 +53,17 @@ export const NUMERIC_COLUMN_KEYS: ReadonlySet<ColumnKey> = new Set([
   'total'
 ]);
 
-export const TABLE_COLUMNS = [
-  {
-    key: 'index',
+export const TABLE_COLUMN_ORDER = [
+  'index',
+  'name',
+  'sku',
+  'qty',
+  'unit',
+  'total'
+] as const satisfies ReadonlyArray<ColumnKey>;
+
+const TABLE_COLUMN_CONFIG: { [Key in ColumnKey]: Omit<ColumnDefinition, 'key'> } = {
+  index: {
     label: '#',
     width: 26,
     align: 'right',
@@ -63,8 +71,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'name',
+  name: {
     label: 'מוצר',
     width: 200,
     align: 'right',
@@ -72,8 +79,7 @@ export const TABLE_COLUMNS = [
     wrapValue: true,
     useMono: false
   },
-  {
-    key: 'sku',
+  sku: {
     label: 'מק"ט',
     width: 84,
     align: 'right',
@@ -81,8 +87,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'qty',
+  qty: {
     label: 'כמות',
     width: 52,
     align: 'right',
@@ -90,8 +95,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'unit',
+  unit: {
     label: 'מחיר יחידה',
     width: 75,
     align: 'right',
@@ -99,8 +103,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: false
   },
-  {
-    key: 'total',
+  total: {
     label: 'סה"כ',
     width: 75,
     align: 'right',
@@ -108,7 +111,14 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: false
   }
-] as const satisfies ReadonlyArray<ColumnDefinition>;
+} as const satisfies { [Key in ColumnKey]: Omit<ColumnDefinition, 'key'> };
+
+export const TABLE_COLUMNS: ReadonlyArray<ColumnDefinition> = TABLE_COLUMN_ORDER.map(
+  (key) => ({
+    key,
+    ...TABLE_COLUMN_CONFIG[key]
+  })
+);
 
 type ColumnRect = ColumnDefinition & {
   left: number;
