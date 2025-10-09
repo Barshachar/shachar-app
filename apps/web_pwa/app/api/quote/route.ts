@@ -28,10 +28,14 @@ const integerFormatter = new Intl.NumberFormat('he-IL', {
   useGrouping: false
 });
 
-const LRM_REGEX = /\u200e/g;
+const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function stripDirectionalMarkers(text: string): string {
+  return text.replace(DIRECTIONAL_MARKS_REGEX, '');
+}
 
 function sanitizeNumberText(text: string): string {
-  return text.replace(LRM_REGEX, '');
+  return stripDirectionalMarkers(text);
 }
 
 function formatInteger(value: number): string {
@@ -46,8 +50,12 @@ function wrapRtl(text: string): string {
   return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
 }
 
+function measureTextWidth(text: string, font: PDFFont, size: number): number {
+  return font.widthOfTextAtSize(stripDirectionalMarkers(text), size);
+}
+
 function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
-  return rightEdge - font.widthOfTextAtSize(text, size);
+  return rightEdge - measureTextWidth(text, font, size);
 }
 
 function assertIntegerCents(value: number, field: string): void {
@@ -172,7 +180,7 @@ export async function POST(request: Request) {
   const textColor = rgb(0.1, 0.1, 0.1);
 
   const rtlTitleText = wrapRtl(TITLE_TEXT);
-  const titleWidth = regularFont.widthOfTextAtSize(rtlTitleText, headingSize);
+  const titleWidth = measureTextWidth(rtlTitleText, regularFont, headingSize);
   activePage.drawText(rtlTitleText, {
     x: width - margin - titleWidth,
     y: cursorY,
@@ -188,8 +196,8 @@ export async function POST(request: Request) {
   const rtlDateLabel = wrapRtl(dateLabel);
   const rtlReferenceText = wrapRtl(referenceText);
   const maxMetaWidth = Math.max(
-    regularFont.widthOfTextAtSize(rtlDateLabel, dateSize),
-    regularFont.widthOfTextAtSize(rtlReferenceText, dateSize)
+    measureTextWidth(rtlDateLabel, regularFont, dateSize),
+    measureTextWidth(rtlReferenceText, regularFont, dateSize)
   );
   activePage.drawText(rtlReferenceText, {
     x: width - margin - maxMetaWidth,

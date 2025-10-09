@@ -126,4 +126,32 @@ describe('computeTotals', () => {
     expect(Number.isInteger(totals.vat)).toBe(true);
     expect(Number.isInteger(totals.total)).toBe(true);
   });
+
+  test('handles extended precision VAT rates without drifting totals', () => {
+    const items = [
+      { qty: 3, unitPriceCents: 1234 },
+      { qty: 0.5, unitPriceCents: 987 }
+    ] as const;
+
+    const totals = computeTotals(items, 0.1725);
+    const expectedSubtotal = Math.round(3 * 1234) + Math.round(0.5 * 987);
+    const expectedVat = Math.round(expectedSubtotal * 0.1725);
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+  });
+
+  test('produces deterministic totals for identical readonly inputs', () => {
+    const items = [
+      { qty: 2.75, unitPriceCents: 4400 },
+      { qty: 0.25, unitPriceCents: 1999 }
+    ] as const;
+
+    const first = computeTotals(items, 0.17);
+    const second = computeTotals(items, 0.17);
+
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+  });
 });
