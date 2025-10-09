@@ -115,6 +115,24 @@ describe('computeTotals', () => {
     expect(items).toEqual(originalSnapshot);
   });
 
+  test('ignores zero-quantity lines while keeping rounding stable', () => {
+    const items = [
+      { qty: 0, unitPriceCents: 4400 },
+      { qty: 2.5, unitPriceCents: 1999 }
+    ];
+
+    const totals = computeTotals(items, 0.17);
+
+    const expectedSubtotal = Math.round(items[1].qty * items[1].unitPriceCents);
+    const expectedVat = Math.round(expectedSubtotal * 0.17);
+
+    expect(totals).toEqual({
+      subtotal: expectedSubtotal,
+      vat: expectedVat,
+      total: expectedSubtotal + expectedVat
+    });
+  });
+
   test('rejects non-finite item quantities or prices', () => {
     expect(() =>
       computeTotals([{ qty: Number.POSITIVE_INFINITY, unitPriceCents: 100 }], 0.17)
@@ -155,5 +173,22 @@ describe('computeTotals', () => {
     expect(Number.isInteger(totals.subtotal)).toBe(true);
     expect(Number.isInteger(totals.vat)).toBe(true);
     expect(Number.isInteger(totals.total)).toBe(true);
+  });
+
+  test('is deterministic across repeated invocations with fractional quantities', () => {
+    const items = [
+      { qty: 2.5, unitPriceCents: 199 },
+      { qty: 3.25, unitPriceCents: 501 },
+      { qty: 0.05, unitPriceCents: 9999 }
+    ];
+    const vatRate = 0.17;
+
+    const first = computeTotals(items, vatRate);
+    const second = computeTotals(items, vatRate);
+
+    expect(second).toEqual(first);
+    expect(Number.isInteger(first.subtotal)).toBe(true);
+    expect(Number.isInteger(first.vat)).toBe(true);
+    expect(first.total).toBe(first.subtotal + first.vat);
   });
 });

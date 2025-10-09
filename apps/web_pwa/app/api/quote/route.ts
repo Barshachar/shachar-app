@@ -41,6 +41,80 @@ function formatQuantity(value: number): string {
   return sanitizeNumberText(quantityFormatter.format(value));
 }
 
+type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
+type ColumnAlignment = 'left' | 'right';
+type ColumnDefinition = {
+  key: ColumnKey;
+  label: string;
+  width: number;
+  align: ColumnAlignment;
+  wrapHeader: boolean;
+  wrapValue: boolean;
+  useMono: boolean;
+};
+
+const TABLE_COLUMNS = [
+  {
+    key: 'index',
+    label: '#',
+    width: 26,
+    align: 'right',
+    wrapHeader: false,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'name',
+    label: 'מוצר',
+    width: 200,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: true,
+    useMono: false
+  },
+  {
+    key: 'sku',
+    label: 'מק"ט',
+    width: 84,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'qty',
+    label: 'כמות',
+    width: 52,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  },
+    {
+      key: 'unit',
+      label: 'מחיר יחידה',
+      width: 75,
+      align: 'right',
+      wrapHeader: true,
+      wrapValue: true,
+      useMono: false
+    },
+    {
+      key: 'total',
+      label: 'סה"כ',
+      width: 75,
+      align: 'right',
+      wrapHeader: true,
+      wrapValue: true,
+      useMono: false
+    }
+  ] as const satisfies ReadonlyArray<ColumnDefinition>;
+
+type ColumnRect = ColumnDefinition & {
+  left: number;
+  right: number;
+};
+
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
   'app',
@@ -208,74 +282,7 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
-  type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
-  type ColumnAlignment = 'left' | 'right';
-  type ColumnDefinition = {
-    key: ColumnKey;
-    label: string;
-    width: number;
-    align: ColumnAlignment;
-    wrapHeader: boolean;
-    wrapValue: boolean;
-    useMono: boolean;
-  };
-
-  const columns = [
-    {
-      key: 'index',
-      label: '#',
-      width: 26,
-      align: 'right',
-      wrapHeader: false,
-      wrapValue: false,
-      useMono: true
-    },
-    {
-      key: 'name',
-      label: 'מוצר',
-      width: 200,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    },
-    {
-      key: 'sku',
-      label: 'מק"ט',
-      width: 84,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: true
-    },
-    {
-      key: 'qty',
-      label: 'כמות',
-      width: 52,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: true
-    },
-    {
-      key: 'unit',
-      label: 'מחיר יחידה',
-      width: 75,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: false
-    },
-    {
-      key: 'total',
-      label: 'סה"כ',
-      width: 75,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: false
-    }
-  ] as const satisfies ReadonlyArray<ColumnDefinition>;
+  const columns = TABLE_COLUMNS;
 
   const totals = computeTotals(
     items.map((item) => ({
@@ -285,17 +292,10 @@ export async function POST(request: Request) {
     VAT_RATE
   );
 
-  type ColumnRect = ColumnDefinition & {
-    left: number;
-    right: number;
-  };
-
   const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
   const computeColumnRects = (): ColumnRect[] => {
-    const desiredRight = width - margin;
-    const desiredLeft = desiredRight - tableWidth;
-    const offset = desiredLeft < margin ? margin - desiredLeft : 0;
-    const tableRight = desiredRight + offset;
+    const availableLeft = Math.max(margin, width - margin - tableWidth);
+    const tableRight = availableLeft + tableWidth;
     let currentRight = tableRight;
 
     return columns.map((column) => {
@@ -408,28 +408,30 @@ export async function POST(request: Request) {
   assertIntegerCents(totals.vat, 'vat');
   assertIntegerCents(totals.total, 'total');
 
+  const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
-    const summaryRight = columnRects[0]?.right ?? width - margin;
-    const valueText = formatILS(entry.value);
-    const valueX = getRightAlignedX(valueText, regularFont, entry.size, summaryRight);
-    activePage.drawText(valueText, {
-      x: valueX,
-      y: cursorY,
-      size: entry.size,
-      font: regularFont,
-      color: entry.color
-    });
-
     const labelText = wrapRtl(entry.label);
-    const labelX = getRightAlignedX(labelText, regularFont, entry.size, valueX - 12);
+    const labelRightEdge = columnRects[0]?.right ?? width - margin;
+    const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelRightEdge);
     activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
       size: entry.size,
       font: regularFont,
       color: textColor
+    });
+
+    const valueText = formatILS(entry.value);
+    const valueRightEdge = labelX - summaryGap;
+    const valueX = getRightAlignedX(valueText, regularFont, entry.size, valueRightEdge);
+    activePage.drawText(valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.size,
+      font: regularFont,
+      color: entry.color
     });
 
     cursorY -= entry.size === 14 ? 20 : 16;
