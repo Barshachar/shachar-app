@@ -258,6 +258,10 @@ export function buildSummaryEntries(
   assertIntegerCents(totals.vat, 'summary vat cents');
   assertIntegerCents(totals.total, 'summary total cents');
 
+  if (totals.total !== totals.subtotal + totals.vat) {
+    throw new Error('Summary total must equal subtotal plus VAT');
+  }
+
   if (!Number.isFinite(vatRate) || vatRate < 0) {
     throw new Error('vatRate must be a non-negative finite number');
   }
@@ -569,25 +573,25 @@ export async function POST(request: Request) {
     const lineSpacing = entry.fontSize === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
     const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
-    const valueText = formatCurrencyForPdf(entry.cents, entry.key);
-    const valueX = getRightAlignedX(valueText, regularFont, entry.fontSize, tableRightEdge);
-    activePage.drawText(valueText, {
-      x: valueX,
-      y: cursorY,
-      size: entry.fontSize,
-      font: regularFont,
-      color: entry.color
-    });
-
     const labelText = wrapRtl(entry.label);
-    const labelRightEdge = Math.max(valueX - summaryGap, margin);
-    const labelX = getRightAlignedX(labelText, regularFont, entry.fontSize, labelRightEdge);
+    const labelX = getRightAlignedX(labelText, regularFont, entry.fontSize, tableRightEdge);
     activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
       size: entry.fontSize,
       font: regularFont,
       color: textColor
+    });
+
+    const valueText = formatCurrencyForPdf(entry.cents, entry.key);
+    const valueRightEdge = Math.max(labelX - summaryGap, margin);
+    const valueX = getRightAlignedX(valueText, regularFont, entry.fontSize, valueRightEdge);
+    activePage.drawText(valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.fontSize,
+      font: regularFont,
+      color: entry.color
     });
 
     cursorY -= lineSpacing;
