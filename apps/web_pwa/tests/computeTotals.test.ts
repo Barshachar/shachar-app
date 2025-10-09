@@ -100,4 +100,30 @@ describe('computeTotals', () => {
       computeTotals([{ qty: 1, unitPriceCents: -50 }], 0.17)
     ).toThrow(/Item price must be non-negative/);
   });
+
+  test('throws when item data is not finite', () => {
+    expect(() =>
+      computeTotals([{ qty: Number.POSITIVE_INFINITY, unitPriceCents: 100 }], 0.17)
+    ).toThrow(/Item quantity must be a finite number/);
+    expect(() =>
+      computeTotals([{ qty: 1, unitPriceCents: Number.NEGATIVE_INFINITY }], 0.17)
+    ).toThrow(/Item price must be a finite number/);
+  });
+
+  test('keeps integer cents for high precision quantities', () => {
+    const items = [
+      { qty: 0.333, unitPriceCents: 19999 },
+      { qty: 2.667, unitPriceCents: 501 },
+      { qty: 1.5, unitPriceCents: 0 }
+    ];
+    const totals = computeTotals(items, 0.17);
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
 });

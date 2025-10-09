@@ -14,17 +14,47 @@ import { computeTotals } from '@/lib/quote';
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 const VAT_RATE = 0.17;
+const RTL_EMBED_START = '\u202B';
+const RTL_EMBED_END = '\u202C';
 
 const quantityFormatter = new Intl.NumberFormat('he-IL', {
-  maximumFractionDigits: 3,
-  minimumFractionDigits: 0
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 3
 });
 
 const integerFormatter = new Intl.NumberFormat('he-IL', {
-  maximumFractionDigits: 0,
   minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
   useGrouping: false
 });
+
+const LRM_REGEX = /\u200e/g;
+
+function sanitizeNumberText(text: string): string {
+  return text.replace(LRM_REGEX, '');
+}
+
+function formatInteger(value: number): string {
+  return sanitizeNumberText(integerFormatter.format(value));
+}
+
+function formatQuantity(value: number): string {
+  return sanitizeNumberText(quantityFormatter.format(value));
+}
+
+function wrapRtl(text: string): string {
+  return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
+}
+
+function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
+  return rightEdge - font.widthOfTextAtSize(text, size);
+}
+
+function assertIntegerCents(value: number, field: string): void {
+  if (!Number.isInteger(value)) {
+    throw new Error(`Expected ${field} to be an integer number of cents`);
+  }
+}
 
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
@@ -141,8 +171,9 @@ export async function POST(request: Request) {
   const dateSize = 12;
   const textColor = rgb(0.1, 0.1, 0.1);
 
-  const titleWidth = regularFont.widthOfTextAtSize(TITLE_TEXT, headingSize);
-  activePage.drawText(TITLE_TEXT, {
+  const rtlTitleText = wrapRtl(TITLE_TEXT);
+  const titleWidth = regularFont.widthOfTextAtSize(rtlTitleText, headingSize);
+  activePage.drawText(rtlTitleText, {
     x: width - margin - titleWidth,
     y: cursorY,
     size: headingSize,
@@ -154,11 +185,13 @@ export async function POST(request: Request) {
   const dateLabel = `נוצר בתאריך: ${formatDate()}`;
   const quoteId = randomUUID().slice(0, 8);
   const referenceText = `מספר הצעה: ${quoteId}`;
+  const rtlDateLabel = wrapRtl(dateLabel);
+  const rtlReferenceText = wrapRtl(referenceText);
   const maxMetaWidth = Math.max(
-    regularFont.widthOfTextAtSize(dateLabel, dateSize),
-    regularFont.widthOfTextAtSize(referenceText, dateSize)
+    regularFont.widthOfTextAtSize(rtlDateLabel, dateSize),
+    regularFont.widthOfTextAtSize(rtlReferenceText, dateSize)
   );
-  activePage.drawText(referenceText, {
+  activePage.drawText(rtlReferenceText, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -166,7 +199,7 @@ export async function POST(request: Request) {
     color: textColor
   });
   cursorY -= dateSize + 6;
-  activePage.drawText(dateLabel, {
+  activePage.drawText(rtlDateLabel, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -177,12 +210,60 @@ export async function POST(request: Request) {
   cursorY -= dateSize + 18;
 
   const columns = [
-    { key: 'index', label: '#', width: 36, align: 'right' as const },
-    { key: 'name', label: 'מוצר', width: 180, align: 'right' as const },
-    { key: 'sku', label: 'מק"ט', width: 90, align: 'right' as const },
-    { key: 'qty', label: 'כמות', width: 70, align: 'right' as const },
-    { key: 'unit', label: 'מחיר יחידה', width: 80, align: 'right' as const },
-    { key: 'total', label: 'סה"כ', width: 80, align: 'right' as const }
+    {
+      key: 'index',
+      label: '#',
+      width: 32,
+      align: 'right' as const,
+      wrapHeader: false,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'name',
+      label: 'מוצר',
+      width: 198,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: true,
+      useMono: false
+    },
+    {
+      key: 'sku',
+      label: 'מק"ט',
+      width: 70,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: true
+    },
+    {
+      key: 'qty',
+      label: 'כמות',
+      width: 55,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'unit',
+      label: 'מחיר יחידה',
+      width: 70,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    },
+    {
+      key: 'total',
+      label: 'סה"כ',
+      width: 70,
+      align: 'right' as const,
+      wrapHeader: true,
+      wrapValue: false,
+      useMono: false
+    }
   ] as const;
 
   const totals = computeTotals(
@@ -220,9 +301,12 @@ export async function POST(request: Request) {
   const drawHeader = () => {
     columnRects = computeColumnRects();
     for (const column of columnRects) {
-      const textWidth = regularFont.widthOfTextAtSize(column.label, headerSize);
-      const textX = column.align === 'right' ? column.right - textWidth : column.left;
-      activePage.drawText(column.label, {
+      const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
+      const textX =
+        column.align === 'right'
+          ? getRightAlignedX(headerText, regularFont, headerSize, column.right)
+          : column.left;
+      activePage.drawText(headerText, {
         x: textX,
         y: cursorY,
         size: headerSize,
@@ -251,25 +335,32 @@ export async function POST(request: Request) {
   };
 
   items.forEach((item, index) => {
-    const unitPrice = item.variant.price_cents;
-    const lineTotal = Math.round(unitPrice * item.qty);
+    const unitPrice = Number(item.variant.price_cents);
+    assertIntegerCents(unitPrice, 'unit price');
 
+    const lineTotal = Math.round(unitPrice * item.qty);
+    assertIntegerCents(lineTotal, 'line total');
+
+    const productName = item.product.name?.trim();
     const entries: Record<typeof columns[number]['key'], string> = {
-      index: integerFormatter.format(index + 1),
-      name: item.product.name,
+      index: formatInteger(index + 1),
+      name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
-      qty: quantityFormatter.format(item.qty),
-      unit: formatILS(Math.round(unitPrice)),
+      qty: formatQuantity(item.qty),
+      unit: formatILS(unitPrice),
       total: formatILS(lineTotal)
     };
 
     ensureSpace();
 
     for (const column of columnRects) {
-      const text = entries[column.key];
-      const fontToUse = column.key === 'sku' ? monoFont : regularFont;
-      const textWidth = fontToUse.widthOfTextAtSize(text, rowFontSize);
-      const textX = column.align === 'right' ? column.right - textWidth : column.left;
+      const baseText = entries[column.key];
+      const text = column.wrapValue ? wrapRtl(baseText) : baseText;
+      const fontToUse = column.useMono ? monoFont : regularFont;
+      const textX =
+        column.align === 'right'
+          ? getRightAlignedX(text, fontToUse, rowFontSize, column.right)
+          : column.left;
       activePage.drawText(text, {
         x: textX,
         y: cursorY,
@@ -282,36 +373,39 @@ export async function POST(request: Request) {
     cursorY -= lineHeight;
   });
 
-  const vatPercentText = new Intl.NumberFormat('he-IL', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0
-  }).format(VAT_RATE * 100);
+  const vatPercentText = sanitizeNumberText(
+    new Intl.NumberFormat('he-IL', {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0
+    }).format(VAT_RATE * 100)
+  );
 
   const summaryEntries = [
-    { label: 'סכום ביניים', valueCents: totals.subtotal, size: 12, color: textColor },
+    { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
     {
       label: `מע"מ (${vatPercentText}%)`,
-      valueCents: totals.vat,
+      value: totals.vat,
       size: 12,
       color: textColor
     },
     {
       label: 'סה"כ לתשלום',
-      valueCents: totals.total,
+      value: totals.total,
       size: 14,
       color: rgb(0.02, 0.4, 0.2)
     }
   ] as const;
 
+  assertIntegerCents(totals.subtotal, 'subtotal');
+  assertIntegerCents(totals.vat, 'vat');
+  assertIntegerCents(totals.total, 'total');
+
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
-    const valueCents = Number.isInteger(entry.valueCents)
-      ? entry.valueCents
-      : Math.round(entry.valueCents);
-    const valueText = formatILS(valueCents);
-    const valueWidth = regularFont.widthOfTextAtSize(valueText, entry.size);
-    const valueX = width - margin - valueWidth;
+    const summaryRight = columnRects[0]?.right ?? width - margin;
+    const valueText = formatILS(entry.value);
+    const valueX = getRightAlignedX(valueText, regularFont, entry.size, summaryRight);
     activePage.drawText(valueText, {
       x: valueX,
       y: cursorY,
@@ -320,9 +414,10 @@ export async function POST(request: Request) {
       color: entry.color
     });
 
-    const labelWidth = regularFont.widthOfTextAtSize(entry.label, entry.size);
-    const labelX = valueX - 12 - labelWidth;
-    activePage.drawText(entry.label, {
+    const labelAnchor = valueX - 12;
+    const labelText = wrapRtl(entry.label);
+    const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelAnchor);
+    activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
       size: entry.size,
