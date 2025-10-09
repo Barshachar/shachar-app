@@ -108,4 +108,13 @@ describe('computeTotals', () => {
     });
     expect(items).toEqual(originalSnapshot);
   });
+
+  test('rejects non-finite item quantities or prices', () => {
+    expect(() =>
+      computeTotals([{ qty: Number.POSITIVE_INFINITY, unitPriceCents: 100 }], 0.17)
+    ).toThrow(/Item quantity must be a finite number/);
+    expect(() =>
+      computeTotals([{ qty: 1, unitPriceCents: Number.NaN }], 0.17)
+    ).toThrow(/Item price must be a finite number/);
+  });
 });
