@@ -5,11 +5,13 @@ import {
   NUMERIC_COLUMN_KEYS,
   computeColumnRectsForWidth,
   formatCurrencyForPdf,
-  resolveColumnTextX
+  resolveColumnTextX,
+  validateTableColumns
 } from '@/app/api/quote/route';
 import { stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
 
 const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+type ColumnDefinition = (typeof TABLE_COLUMNS)[number];
 
 describe('quote PDF RTL layout helpers', () => {
   test('TABLE_COLUMNS preserves expected RTL ordering', () => {
@@ -108,5 +110,22 @@ describe('quote PDF RTL layout helpers', () => {
     const leftX = resolveColumnTextX(leftAlignedColumn, rtlText, fakeFont, 10);
 
     expect(leftX).toBe(leftAlignedColumn.left);
+  });
+
+  test('validateTableColumns enforces order and numeric alignment', () => {
+    expect(() => validateTableColumns(TABLE_COLUMNS)).not.toThrow();
+
+    const misordered: ColumnDefinition[] = Array.from(TABLE_COLUMNS).reverse();
+    expect(() => validateTableColumns(misordered)).toThrow(/RTL column order/);
+
+    const misaligned: ColumnDefinition[] = Array.from(TABLE_COLUMNS, (column) =>
+      column.key === 'unit' ? { ...column, align: 'left' as const } : column
+    );
+    expect(() => validateTableColumns(misaligned)).toThrow(/right-aligned/);
+
+    const wrappedNumeric: ColumnDefinition[] = Array.from(TABLE_COLUMNS, (column) =>
+      column.key === 'total' ? { ...column, wrapValue: true } : column
+    );
+    expect(() => validateTableColumns(wrappedNumeric)).toThrow(/wrap values/);
   });
 });

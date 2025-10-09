@@ -123,6 +123,29 @@ export const TABLE_COLUMNS: ReadonlyArray<ColumnDefinition> = TABLE_COLUMN_ORDER
   })
 );
 
+export function validateTableColumns(columns: ReadonlyArray<ColumnDefinition>): void {
+  const keys = columns.map((column) => column.key);
+  if (
+    keys.length !== TABLE_COLUMN_ORDER.length ||
+    keys.some((key, index) => key !== TABLE_COLUMN_ORDER[index])
+  ) {
+    throw new Error('TABLE_COLUMNS must preserve the expected RTL column order');
+  }
+
+  for (const column of columns) {
+    if (NUMERIC_COLUMN_KEYS.has(column.key)) {
+      if (column.align !== 'right') {
+        throw new Error(`Numeric column ${column.key} must be right-aligned`);
+      }
+      if (column.wrapValue) {
+        throw new Error(`Numeric column ${column.key} must not wrap values`);
+      }
+    }
+  }
+}
+
+validateTableColumns(TABLE_COLUMNS);
+
 type ColumnRect = ColumnDefinition & {
   left: number;
   right: number;

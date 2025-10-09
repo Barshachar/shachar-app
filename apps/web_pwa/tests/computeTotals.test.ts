@@ -222,4 +222,28 @@ describe('computeTotals', () => {
       total: 2
     });
   });
+
+  test('supports full-rate VAT without breaking integer guarantees', () => {
+    const items = [
+      { qty: 1.25, unitPriceCents: 8800 },
+      { qty: 0.75, unitPriceCents: 1200 }
+    ];
+
+    const totals = computeTotals(items, 1);
+
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = expectedSubtotal;
+
+    expect(totals).toEqual({
+      subtotal: expectedSubtotal,
+      vat: expectedVat,
+      total: expectedSubtotal + expectedVat
+    });
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
 });
