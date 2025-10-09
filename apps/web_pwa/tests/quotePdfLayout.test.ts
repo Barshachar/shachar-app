@@ -1,6 +1,8 @@
+import { rgb } from 'pdf-lib';
 import { describe, expect, test } from 'vitest';
 import type { ColumnRect } from '@/app/api/quote/route';
 import {
+  buildSummaryEntries,
   NUMERIC_COLUMN_KEYS,
   TABLE_COLUMNS,
   formatCurrencyForPdf,
@@ -8,6 +10,7 @@ import {
   formatQuantity,
   resolveTableRightEdge
 } from '@/app/api/quote/route';
+import type { QuoteTotals } from '@/lib/quote';
 
 const RTL_START = '\u202B';
 const RTL_END = '\u202C';
@@ -90,5 +93,56 @@ describe('quote PDF layout', () => {
   test('resolveTableRightEdge validates fallback dimensions', () => {
     expect(() => resolveTableRightEdge([], 0, 50)).toThrow(/positive finite number/);
     expect(() => resolveTableRightEdge([], 612, -1)).toThrow(/non-negative/);
+  });
+
+  test('buildSummaryEntries returns ordered RTL summary rows', () => {
+    const baseColor = rgb(0.1, 0.1, 0.1);
+    const highlightColor = rgb(0.02, 0.4, 0.2);
+    const totals: QuoteTotals = { subtotal: 1000, vat: 170, total: 1170 };
+
+    const first = buildSummaryEntries(totals, 0.17, baseColor, highlightColor);
+    const second = buildSummaryEntries(totals, 0.17, baseColor, highlightColor);
+
+    expect(first.map((entry) => entry.key)).toEqual(['subtotal', 'vat', 'total']);
+    expect(first[0]!.fontSize).toBe(12);
+    expect(first[1]!.label).toContain('%');
+    expect(DIRECTIONAL_MARK_REGEX.test(first[1]!.label)).toBe(false);
+    expect(first[2]!.fontSize).toBe(14);
+    expect(first[0]!.color).toBe(baseColor);
+    expect(first[2]!.color).toBe(highlightColor);
+    expect(second).not.toBe(first);
+    expect(second).toEqual(first);
+  });
+
+  test('buildSummaryEntries enforces integer cents and VAT validation', () => {
+    const baseColor = rgb(0.1, 0.1, 0.1);
+    const highlightColor = rgb(0.02, 0.4, 0.2);
+
+    expect(() =>
+      buildSummaryEntries(
+        { subtotal: 100.5, vat: 17, total: 117 } as QuoteTotals,
+        0.17,
+        baseColor,
+        highlightColor
+      )
+    ).toThrow(/integer number of cents/);
+
+    expect(() =>
+      buildSummaryEntries(
+        { subtotal: 100, vat: 17, total: 117 } as QuoteTotals,
+        Number.NaN,
+        baseColor,
+        highlightColor
+      )
+    ).toThrow(/non-negative finite number/);
+
+    expect(() =>
+      buildSummaryEntries(
+        { subtotal: 100, vat: 17, total: 117 } as QuoteTotals,
+        -0.01,
+        baseColor,
+        highlightColor
+      )
+    ).toThrow(/non-negative finite number/);
   });
 });

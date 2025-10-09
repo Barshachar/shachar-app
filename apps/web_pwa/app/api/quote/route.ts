@@ -5,12 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import type { PDFFont } from 'pdf-lib';
+import type { PDFFont, RGB } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
 import { computeTotals } from '@/lib/quote';
+import type { QuoteTotals } from '@/lib/quote';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
@@ -27,6 +28,11 @@ const integerFormatter = new Intl.NumberFormat('he-IL', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
   useGrouping: false
+});
+
+const VAT_PERCENT_FORMATTER = new Intl.NumberFormat('he-IL', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
 });
 
 const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
@@ -180,6 +186,114 @@ export function formatCurrencyForPdf(valueCents: number, field: string): string 
   return wrapRtl(sanitized);
 }
 
+export type QuoteSummaryRowKey = 'subtotal' | 'vat' | 'total';
+
+export type QuoteSummaryRow = {
+  key: QuoteSummaryRowKey;
+  label: string;
+  value: string;
+  size: number;
+};
+
+export function prepareSummaryRows(
+  totals: QuoteTotals,
+  vatRate: number
+): ReadonlyArray<QuoteSummaryRow> {
+  if (!Number.isFinite(vatRate)) {
+    throw new Error('VAT rate must be a finite number for summary rows');
+  }
+  if (vatRate < 0) {
+    throw new Error('VAT rate must be non-negative for summary rows');
+  }
+
+  assertIntegerCents(totals.subtotal, 'summary subtotal');
+  assertIntegerCents(totals.vat, 'summary VAT');
+  assertIntegerCents(totals.total, 'summary total');
+
+  if (totals.total !== totals.subtotal + totals.vat) {
+    throw new Error('Summary total must equal subtotal plus VAT');
+  }
+
+  const vatPercentText = sanitizeNumberText(VAT_PERCENT_FORMATTER.format(vatRate * 100));
+
+  return [
+    {
+      key: 'subtotal',
+      label: wrapRtl('סכום ביניים'),
+      value: formatCurrencyForPdf(totals.subtotal, 'summary subtotal'),
+      size: 12
+    },
+    {
+      key: 'vat',
+      label: wrapRtl(`מע"מ (${vatPercentText}%)`),
+      value: formatCurrencyForPdf(totals.vat, 'summary VAT'),
+      size: 12
+    },
+    {
+      key: 'total',
+      label: wrapRtl('סה"כ לתשלום'),
+      value: formatCurrencyForPdf(totals.total, 'summary total'),
+      size: 14
+    }
+  ] satisfies ReadonlyArray<QuoteSummaryRow>;
+}
+
+type SummaryKey = 'subtotal' | 'vat' | 'total';
+
+export type SummaryEntry = {
+  key: SummaryKey;
+  label: string;
+  cents: number;
+  fontSize: number;
+  color: RGB;
+};
+
+export function buildSummaryEntries(
+  totals: QuoteTotals,
+  vatRate: number,
+  baseTextColor: RGB,
+  totalHighlightColor: RGB
+): ReadonlyArray<SummaryEntry> {
+  assertIntegerCents(totals.subtotal, 'summary subtotal cents');
+  assertIntegerCents(totals.vat, 'summary vat cents');
+  assertIntegerCents(totals.total, 'summary total cents');
+
+  if (!Number.isFinite(vatRate) || vatRate < 0) {
+    throw new Error('vatRate must be a non-negative finite number');
+  }
+
+  const vatPercentText = sanitizeNumberText(
+    new Intl.NumberFormat('he-IL', {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0
+    }).format(vatRate * 100)
+  );
+
+  return [
+    {
+      key: 'subtotal',
+      label: 'סכום ביניים',
+      cents: totals.subtotal,
+      fontSize: 12,
+      color: baseTextColor
+    },
+    {
+      key: 'vat',
+      label: `מע"מ (${vatPercentText}%)`,
+      cents: totals.vat,
+      fontSize: 12,
+      color: baseTextColor
+    },
+    {
+      key: 'total',
+      label: 'סה"כ לתשלום',
+      cents: totals.total,
+      fontSize: 14,
+      color: totalHighlightColor
+    }
+  ];
+}
+
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_FONT_PATH = path.resolve(MODULE_DIR, 'fonts', 'Inter-Regular.ttf');
@@ -295,6 +409,7 @@ export async function POST(request: Request) {
   const headingSize = 20;
   const dateSize = 12;
   const textColor = rgb(0.1, 0.1, 0.1);
+  const totalHighlightColor = rgb(0.02, 0.4, 0.2);
 
   const rtlTitleText = wrapRtl(TITLE_TEXT);
   const titleWidth = measureTextWidth(rtlTitleText, regularFont, headingSize);
@@ -437,28 +552,7 @@ export async function POST(request: Request) {
     cursorY -= lineHeight;
   });
 
-  const vatPercentText = sanitizeNumberText(
-    new Intl.NumberFormat('he-IL', {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 0
-    }).format(VAT_RATE * 100)
-  );
-
-  const summaryEntries = [
-    { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
-    {
-      label: `מע"מ (${vatPercentText}%)`,
-      value: totals.vat,
-      size: 12,
-      color: textColor
-    },
-    {
-      label: 'סה"כ לתשלום',
-      value: totals.total,
-      size: 14,
-      color: rgb(0.02, 0.4, 0.2)
-    }
-  ] as const;
+  const summaryEntries = buildSummaryEntries(totals, VAT_RATE, textColor, totalHighlightColor);
 
   const ensureSummarySpace = (requiredHeight: number) => {
     if (cursorY < margin + requiredHeight) {
@@ -472,26 +566,26 @@ export async function POST(request: Request) {
   const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
-    const lineSpacing = entry.size === 14 ? 20 : 16;
+    const lineSpacing = entry.fontSize === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
     const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
-    const valueText = formatCurrencyForPdf(entry.value, entry.label);
-    const valueX = getRightAlignedX(valueText, regularFont, entry.size, tableRightEdge);
+    const valueText = formatCurrencyForPdf(entry.cents, entry.key);
+    const valueX = getRightAlignedX(valueText, regularFont, entry.fontSize, tableRightEdge);
     activePage.drawText(valueText, {
       x: valueX,
       y: cursorY,
-      size: entry.size,
+      size: entry.fontSize,
       font: regularFont,
       color: entry.color
     });
 
     const labelText = wrapRtl(entry.label);
     const labelRightEdge = Math.max(valueX - summaryGap, margin);
-    const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelRightEdge);
+    const labelX = getRightAlignedX(labelText, regularFont, entry.fontSize, labelRightEdge);
     activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
-      size: entry.size,
+      size: entry.fontSize,
       font: regularFont,
       color: textColor
     });
