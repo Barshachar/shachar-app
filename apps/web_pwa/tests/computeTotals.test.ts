@@ -209,6 +209,28 @@ describe('computeTotals', () => {
     expect(Number.isInteger(totals.total)).toBe(true);
   });
 
+  test('maintains sums when line rounding alternates up and down', () => {
+    const items = [
+      { qty: 1.2, unitPriceCents: 399 },
+      { qty: 0.8, unitPriceCents: 499 },
+      { qty: 2.333, unitPriceCents: 205 }
+    ];
+    const vatRate = 0.1725;
+
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = Math.round(expectedSubtotal * vatRate);
+
+    const totals = computeTotals(items, vatRate);
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
+
   test('keeps subtotal, vat, and total as integers with fractional VAT rates', () => {
     const totals = computeTotals([{ qty: 5.75, unitPriceCents: 2899 }], 0.165);
     expect(Number.isInteger(totals.subtotal)).toBe(true);

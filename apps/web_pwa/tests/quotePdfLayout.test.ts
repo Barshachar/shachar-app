@@ -5,6 +5,7 @@ import {
   NUMERIC_COLUMN_KEYS,
   computeColumnRectsForWidth,
   formatCurrencyForPdf,
+  normalizeRtlTableValue,
   resolveColumnTextX,
   resolveTableRightEdge,
   buildSummaryTextEntries,
@@ -21,6 +22,16 @@ const RTL_END = '\u202C';
 type ColumnDefinition = (typeof TABLE_COLUMNS)[number];
 
 describe('quote PDF RTL layout helpers', () => {
+  test('normalizeRtlTableValue trims text, strips directional marks, and falls back safely', () => {
+    const raw = '\u200F  מוצר איכותי \u202C';
+    expect(normalizeRtlTableValue(raw)).toBe('מוצר איכותי');
+
+    const onlyMarkers = '\u202E\u200F';
+    expect(normalizeRtlTableValue(onlyMarkers)).toBe('—');
+
+    expect(normalizeRtlTableValue(undefined, 'N/A')).toBe('N/A');
+  });
+
   test('TABLE_COLUMNS preserves expected RTL ordering', () => {
     const keys = TABLE_COLUMNS.map((column) => column.key);
     expect(keys).toEqual(['index', 'name', 'sku', 'qty', 'unit', 'total']);

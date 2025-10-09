@@ -43,20 +43,30 @@ export function formatQuantity(value: number): string {
   return sanitizeNumberText(quantityFormatter.format(value));
 }
 
-function normalizeProductName(productName: string | null | undefined): string {
-  const trimmed = productName?.trim();
-  if (!trimmed) {
-    return '—';
+export function normalizeRtlTableValue(
+  value: string | null | undefined,
+  fallback = '—'
+): string {
+  if (value == null) {
+    return stripDirectionalMarkers(fallback);
   }
+
+  const withoutMarks = stripDirectionalMarkers(value);
+  const trimmed = withoutMarks.trim();
+
+  if (!trimmed) {
+    return stripDirectionalMarkers(fallback);
+  }
+
   return trimmed;
 }
 
+function normalizeProductName(productName: string | null | undefined): string {
+  return normalizeRtlTableValue(productName);
+}
+
 function normalizeSku(sku: string | null | undefined): string {
-  const trimmed = sku?.trim();
-  if (!trimmed) {
-    return '—';
-  }
-  return trimmed;
+  return normalizeRtlTableValue(sku);
 }
 
 export type QuoteTableRowInput = {
