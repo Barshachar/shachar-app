@@ -60,6 +60,12 @@ describe('quote PDF layout', () => {
     );
   });
 
+  test('formatCurrencyForPdf rejects unsafe integer cent values', () => {
+    expect(() =>
+      formatCurrencyForPdf(Number.MAX_SAFE_INTEGER + 1, 'unsafe cents')
+    ).toThrow(/safe integer number of cents/);
+  });
+
   test('formatInteger and formatQuantity sanitize numeric output', () => {
     const formattedIndex = formatInteger(42);
     expect(formattedIndex.includes(RTL_START)).toBe(false);

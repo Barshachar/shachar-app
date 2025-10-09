@@ -1,5 +1,32 @@
 import { describe, expect, test } from 'vitest';
-import { computeTotals } from '@/lib/quote';
+import { computeLineTotalCents, computeTotals } from '@/lib/quote';
+
+describe('computeLineTotalCents', () => {
+  test('rounds fractional quantities to integer cents', () => {
+    expect(computeLineTotalCents(1.333, 9999)).toBe(Math.round(1.333 * 9999));
+  });
+
+  test('throws when quantity is negative', () => {
+    expect(() => computeLineTotalCents(-1, 100)).toThrow(/non-negative/);
+  });
+
+  test('throws when unit price is not an integer number of cents', () => {
+    expect(() => computeLineTotalCents(1, 19.5)).toThrow(/integer number of cents/);
+  });
+
+  test('throws when unit price exceeds safe integer bounds', () => {
+    expect(() => computeLineTotalCents(2, Number.MAX_SAFE_INTEGER + 10)).toThrow(
+      /safe integer number of cents/
+    );
+  });
+
+  test('throws when inputs are not finite numbers', () => {
+    expect(() => computeLineTotalCents(Number.NaN, 100)).toThrow(/finite number/);
+    expect(() =>
+      computeLineTotalCents(1, Number.POSITIVE_INFINITY)
+    ).toThrow(/finite number/);
+  });
+});
 
 describe('computeTotals', () => {
   test('calculates subtotal, vat, and total for basic lines', () => {
@@ -197,5 +224,15 @@ describe('computeTotals', () => {
     const items = [{ qty: 1, unitPriceCents: nearLimit }];
 
     expect(() => computeTotals(items, 1)).toThrow(/safe integer number of cents/i);
+  });
+
+  test('throws when subtotal accumulation exceeds safe integer bounds across lines', () => {
+    const halfLimit = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+    const items = [
+      { qty: halfLimit, unitPriceCents: 2 },
+      { qty: halfLimit, unitPriceCents: 2 }
+    ];
+
+    expect(() => computeTotals(items, 0)).toThrow(/safe integer number of cents/i);
   });
 });

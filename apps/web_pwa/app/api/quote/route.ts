@@ -10,7 +10,11 @@ import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
-import { computeTotals } from '@/lib/quote';
+import {
+  assertQuoteIntegerCents as assertIntegerCents,
+  computeLineTotalCents,
+  computeTotals
+} from '@/lib/quote';
 import type { QuoteTotals } from '@/lib/quote';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
@@ -63,12 +67,6 @@ function measureTextWidth(text: string, font: PDFFont, size: number): number {
 
 function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
   return rightEdge - measureTextWidth(text, font, size);
-}
-
-function assertIntegerCents(value: number, field: string): void {
-  if (!Number.isInteger(value)) {
-    throw new Error(`Expected ${field} to be an integer number of cents`);
-  }
 }
 
 type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
@@ -520,9 +518,7 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPriceCents = Number(item.variant.price_cents);
-    assertIntegerCents(unitPriceCents, 'unit price cents');
-    const lineTotalCents = Math.round(unitPriceCents * item.qty);
-    assertIntegerCents(lineTotalCents, 'line total cents');
+    const lineTotalCents = computeLineTotalCents(item.qty, unitPriceCents);
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
@@ -556,7 +552,12 @@ export async function POST(request: Request) {
     cursorY -= lineHeight;
   });
 
-  const summaryEntries = buildSummaryEntries(totals, VAT_RATE, textColor, totalHighlightColor);
+  const summaryRows = prepareSummaryRows(totals, VAT_RATE);
+  const summaryColors: Record<QuoteSummaryRowKey, RGB> = {
+    subtotal: textColor,
+    vat: textColor,
+    total: totalHighlightColor
+  };
 
   const ensureSummarySpace = (requiredHeight: number) => {
     if (cursorY < margin + requiredHeight) {
@@ -569,29 +570,28 @@ export async function POST(request: Request) {
 
   const summaryGap = 16;
   cursorY -= 10;
-  for (const entry of summaryEntries) {
-    const lineSpacing = entry.fontSize === 14 ? 20 : 16;
+  for (const row of summaryRows) {
+    const lineSpacing = row.size === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
     const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
-    const labelText = wrapRtl(entry.label);
-    const labelX = getRightAlignedX(labelText, regularFont, entry.fontSize, tableRightEdge);
-    activePage.drawText(labelText, {
+    const labelX = getRightAlignedX(row.label, regularFont, row.size, tableRightEdge);
+    activePage.drawText(row.label, {
       x: labelX,
       y: cursorY,
-      size: entry.fontSize,
+      size: row.size,
       font: regularFont,
       color: textColor
     });
 
-    const valueText = formatCurrencyForPdf(entry.cents, entry.key);
     const valueRightEdge = Math.max(labelX - summaryGap, margin);
-    const valueX = getRightAlignedX(valueText, regularFont, entry.fontSize, valueRightEdge);
-    activePage.drawText(valueText, {
+    const valueX = getRightAlignedX(row.value, regularFont, row.size, valueRightEdge);
+    const valueColor = summaryColors[row.key] ?? textColor;
+    activePage.drawText(row.value, {
       x: valueX,
       y: cursorY,
-      size: entry.fontSize,
+      size: row.size,
       font: regularFont,
-      color: entry.color
+      color: valueColor
     });
 
     cursorY -= lineSpacing;
