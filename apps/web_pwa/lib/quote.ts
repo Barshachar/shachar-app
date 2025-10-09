@@ -15,6 +15,30 @@ function assertFiniteNumber(value: number, message: string): asserts value is nu
   }
 }
 
+export function computeLineTotalCents(qty: number, unitPriceCents: number): number {
+  assertFiniteNumber(qty, 'Item quantity must be a finite number');
+  assertFiniteNumber(unitPriceCents, 'Item price must be a finite number');
+
+  if (qty < 0) {
+    throw new Error('Item quantity must be non-negative');
+  }
+  if (unitPriceCents < 0) {
+    throw new Error('Item price must be non-negative');
+  }
+  if (!Number.isInteger(unitPriceCents)) {
+    throw new Error('Item price must be an integer number of cents');
+  }
+
+  const lineTotal = Math.round(unitPriceCents * qty);
+  assertFiniteNumber(lineTotal, 'Line total must be a finite number');
+
+  if (!Number.isInteger(lineTotal)) {
+    throw new Error('Line total must resolve to an integer number of cents');
+  }
+
+  return lineTotal;
+}
+
 export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number): QuoteTotals {
   assertFiniteNumber(vatRate, 'VAT rate must be a finite number');
   if (vatRate < 0) {
@@ -24,19 +48,7 @@ export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number):
   let subtotal = 0;
 
   for (const item of items) {
-    assertFiniteNumber(item.qty, 'Item quantity must be a finite number');
-    assertFiniteNumber(item.unitPriceCents, 'Item price must be a finite number');
-    if (item.qty < 0) {
-      throw new Error('Item quantity must be non-negative');
-    }
-    if (item.unitPriceCents < 0) {
-      throw new Error('Item price must be non-negative');
-    }
-    if (!Number.isInteger(item.unitPriceCents)) {
-      throw new Error('Item price must be an integer number of cents');
-    }
-
-    const lineTotal = Math.round(item.unitPriceCents * item.qty);
+    const lineTotal = computeLineTotalCents(item.qty, item.unitPriceCents);
     subtotal += lineTotal;
   }
 

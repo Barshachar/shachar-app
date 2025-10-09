@@ -4,6 +4,7 @@ import {
   TABLE_COLUMN_ORDER,
   TABLE_COLUMNS,
   buildSummaryTextEntries,
+  formatCurrencyForPdf,
   computeColumnRectsForWidth,
   validateTableColumns
 } from '@/app/api/quote/route';
@@ -63,5 +64,29 @@ describe('quote PDF layout', () => {
     };
 
     expect(() => buildSummaryTextEntries(totals, 0.17)).toThrow(/integer number of cents/i);
+  });
+
+  test('rejects summary totals that do not add up', () => {
+    const totals: QuoteTotals = {
+      subtotal: 1000,
+      vat: 170,
+      total: 1171
+    };
+
+    expect(() => buildSummaryTextEntries(totals, 0.17)).toThrow(/subtotal plus VAT/i);
+  });
+
+  test('formatCurrencyForPdf wraps ILS and enforces integer cents', () => {
+    const value = 12345;
+    const formatted = formatCurrencyForPdf(value, 'test field');
+
+    expect(formatted.startsWith('\u202B')).toBe(true);
+    expect(formatted.endsWith('\u202C')).toBe(true);
+    const innerValue = formatted.slice(1, -1);
+    expect(innerValue).toBe(sanitizeNumberText(formatILS(value)));
+
+    expect(() => formatCurrencyForPdf(12.34 as unknown as number, 'bad field')).toThrow(
+      /integer number of cents/
+    );
   });
 });

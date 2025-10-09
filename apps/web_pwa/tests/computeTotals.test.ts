@@ -1,5 +1,24 @@
 import { describe, expect, test } from 'vitest';
-import { computeTotals } from '@/lib/quote';
+import { computeLineTotalCents, computeTotals } from '@/lib/quote';
+
+describe('computeLineTotalCents', () => {
+  test('rounds fractional quantities to integer cents', () => {
+    expect(computeLineTotalCents(1.333, 9999)).toBe(Math.round(1.333 * 9999));
+  });
+
+  test('throws when quantity is negative', () => {
+    expect(() => computeLineTotalCents(-1, 100)).toThrow(/non-negative/);
+  });
+
+  test('throws when unit price is not an integer number of cents', () => {
+    expect(() => computeLineTotalCents(1, 19.99)).toThrow(/integer number of cents/);
+  });
+
+  test('throws when inputs are not finite numbers', () => {
+    expect(() => computeLineTotalCents(Number.NaN, 100)).toThrow(/finite number/);
+    expect(() => computeLineTotalCents(1, Number.POSITIVE_INFINITY)).toThrow(/finite number/);
+  });
+});
 
 describe('computeTotals', () => {
   test('calculates subtotal, vat, and total for basic lines', () => {

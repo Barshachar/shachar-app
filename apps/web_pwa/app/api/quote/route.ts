@@ -10,7 +10,7 @@ import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
-import { computeTotals, type QuoteTotals } from '@/lib/quote';
+import { computeLineTotalCents, computeTotals, type QuoteTotals } from '@/lib/quote';
 import { sanitizeNumberText, stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
@@ -508,9 +508,7 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPriceCents = Number(item.variant.price_cents);
-    assertIntegerCents(unitPriceCents, 'unit price cents');
-    const lineTotalCents = Math.round(unitPriceCents * item.qty);
-    assertIntegerCents(lineTotalCents, 'line total cents');
+    const lineTotalCents = computeLineTotalCents(item.qty, unitPriceCents);
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
