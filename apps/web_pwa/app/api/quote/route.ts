@@ -35,12 +35,55 @@ const integerFormatter = new Intl.NumberFormat('he-IL', {
   maximumFractionDigits: 0
 });
 
-function formatInteger(value: number): string {
+export function formatInteger(value: number): string {
   return sanitizeNumberText(integerFormatter.format(value));
 }
 
-function formatQuantity(value: number): string {
+export function formatQuantity(value: number): string {
   return sanitizeNumberText(quantityFormatter.format(value));
+}
+
+function normalizeProductName(productName: string | null | undefined): string {
+  const trimmed = productName?.trim();
+  if (!trimmed) {
+    return '—';
+  }
+  return trimmed;
+}
+
+function normalizeSku(sku: string | null | undefined): string {
+  const trimmed = sku?.trim();
+  if (!trimmed) {
+    return '—';
+  }
+  return trimmed;
+}
+
+export type QuoteTableRowInput = {
+  index: number;
+  qty: number;
+  unitPriceCents: number;
+  productName?: string | null;
+  sku?: string | null;
+};
+
+export function buildTableRowEntries({
+  index,
+  qty,
+  unitPriceCents,
+  productName,
+  sku
+}: QuoteTableRowInput): Record<ColumnKey, string> {
+  const lineTotalCents = computeLineTotalCents(qty, unitPriceCents);
+
+  return {
+    index: formatInteger(index + 1),
+    name: normalizeProductName(productName),
+    sku: normalizeSku(sku),
+    qty: formatQuantity(qty),
+    unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
+    total: formatCurrencyForPdf(lineTotalCents, 'line total')
+  };
 }
 
 type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
@@ -122,12 +165,17 @@ const TABLE_COLUMN_CONFIG: { [Key in ColumnKey]: Omit<ColumnDefinition, 'key'> }
   }
 } as const satisfies { [Key in ColumnKey]: Omit<ColumnDefinition, 'key'> };
 
-export const TABLE_COLUMNS: ReadonlyArray<ColumnDefinition> = TABLE_COLUMN_ORDER.map(
-  (key) => ({
-    key,
-    ...TABLE_COLUMN_CONFIG[key]
-  })
-);
+function createTableColumns(): ReadonlyArray<ColumnDefinition> {
+  const columns = TABLE_COLUMN_ORDER.map((key) =>
+    Object.freeze({
+      key,
+      ...TABLE_COLUMN_CONFIG[key]
+    })
+  );
+  return Object.freeze(columns) as ReadonlyArray<ColumnDefinition>;
+}
+
+export const TABLE_COLUMNS = createTableColumns();
 
 export function validateTableColumns(columns: ReadonlyArray<ColumnDefinition>): void {
   const keys = columns.map((column) => column.key);
@@ -294,8 +342,12 @@ function formatDate(): string {
   }).format(new Date());
 }
 
+function measureTextWidth(text: string, font: PDFFont, size: number): number {
+  return font.widthOfTextAtSize(stripDirectionalMarkers(text), size);
+}
+
 function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
-  return rightEdge - font.widthOfTextAtSize(stripDirectionalMarkers(text), size);
+  return rightEdge - measureTextWidth(text, font, size);
 }
 
 function assertIntegerCents(value: number, field: string): void {
@@ -319,7 +371,7 @@ type SummaryEntryDefinition = {
   key: SummaryEntryKey;
   buildLabel: (vatPercentText: string) => string;
   fontSize: number;
-  valueColor: RGB;
+  colorRole: 'base' | 'highlight';
 };
 
 const SUMMARY_ENTRY_DEFINITIONS: readonly SummaryEntryDefinition[] = [
@@ -327,34 +379,29 @@ const SUMMARY_ENTRY_DEFINITIONS: readonly SummaryEntryDefinition[] = [
     key: 'subtotal',
     buildLabel: () => 'סכום ביניים',
     fontSize: 12,
-    valueColor: PRIMARY_TEXT_COLOR
+    colorRole: 'base'
   },
   {
     key: 'vat',
     buildLabel: (vatPercentText) => `מע"מ (${vatPercentText}%)`,
     fontSize: 12,
-    valueColor: PRIMARY_TEXT_COLOR
+    colorRole: 'base'
   },
   {
     key: 'total',
     buildLabel: () => 'סה"כ לתשלום',
     fontSize: 14,
-    valueColor: SUMMARY_HIGHLIGHT_COLOR
+    colorRole: 'highlight'
   }
 ] as const satisfies ReadonlyArray<SummaryEntryDefinition>;
 
-export type SummaryTextEntry = {
-  key: SummaryEntryKey;
-  labelText: string;
-  valueText: string;
-  fontSize: number;
-  valueColor: RGB;
-};
+const SUMMARY_VALUE_FIELD_NAMES: Record<SummaryEntryKey, string> = {
+  subtotal: 'summary subtotal',
+  vat: 'summary VAT',
+  total: 'summary total'
+} as const;
 
-export function buildSummaryTextEntries(
-  totals: QuoteTotals,
-  vatRate: number
-): SummaryTextEntry[] {
+function validateSummaryInputs(totals: QuoteTotals, vatRate: number): string {
   if (!Number.isFinite(vatRate)) {
     throw new Error('VAT rate must be a finite number');
   }
@@ -371,23 +418,83 @@ export function buildSummaryTextEntries(
     throw new Error('Summary total must equal subtotal plus VAT');
   }
 
-  const vatPercentText = sanitizeNumberText(
-    VAT_PERCENT_FORMATTER.format(vatRate * 100)
+  return sanitizeNumberText(VAT_PERCENT_FORMATTER.format(vatRate * 100));
+}
+
+export type SummaryEntry = {
+  key: SummaryEntryKey;
+  label: string;
+  cents: number;
+  fontSize: number;
+  color: RGB;
+};
+
+export function buildSummaryEntries(
+  totals: QuoteTotals,
+  vatRate: number,
+  baseTextColor: RGB,
+  totalHighlightColor: RGB
+): ReadonlyArray<SummaryEntry> {
+  const vatPercentText = validateSummaryInputs(totals, vatRate);
+
+  return SUMMARY_ENTRY_DEFINITIONS.map((definition) => ({
+    key: definition.key,
+    label: definition.buildLabel(vatPercentText),
+    cents: totals[definition.key],
+    fontSize: definition.fontSize,
+    color: definition.colorRole === 'highlight' ? totalHighlightColor : baseTextColor
+  }));
+}
+
+export type QuoteSummaryRow = {
+  key: SummaryEntryKey;
+  label: string;
+  value: string;
+  size: number;
+};
+
+export function prepareSummaryRows(
+  totals: QuoteTotals,
+  vatRate: number
+): ReadonlyArray<QuoteSummaryRow> {
+  const entries = buildSummaryEntries(
+    totals,
+    vatRate,
+    PRIMARY_TEXT_COLOR,
+    SUMMARY_HIGHLIGHT_COLOR
   );
 
-  return SUMMARY_ENTRY_DEFINITIONS.map((definition) => {
-    const rawValue = totals[definition.key];
-    const rawLabel = definition.buildLabel(vatPercentText);
-    const labelText = wrapRtl(rawLabel);
-    const valueText = formatCurrencyForPdf(rawValue, rawLabel);
-    return {
-      key: definition.key,
-      labelText,
-      valueText,
-      fontSize: definition.fontSize,
-      valueColor: definition.valueColor
-    };
-  });
+  return entries.map((entry) => ({
+    key: entry.key,
+    label: wrapRtl(entry.label),
+    value: formatCurrencyForPdf(entry.cents, SUMMARY_VALUE_FIELD_NAMES[entry.key]),
+    size: entry.fontSize
+  }));
+}
+
+export type SummaryTextEntry = {
+  key: SummaryEntryKey;
+  labelText: string;
+  valueText: string;
+  fontSize: number;
+  valueColor: RGB;
+};
+
+export function buildSummaryTextEntries(
+  totals: QuoteTotals,
+  vatRate: number,
+  baseTextColor: RGB = PRIMARY_TEXT_COLOR,
+  totalHighlightColor: RGB = SUMMARY_HIGHLIGHT_COLOR
+): SummaryTextEntry[] {
+  const entries = buildSummaryEntries(totals, vatRate, baseTextColor, totalHighlightColor);
+
+  return entries.map((entry) => ({
+    key: entry.key,
+    labelText: wrapRtl(entry.label),
+    valueText: formatCurrencyForPdf(entry.cents, SUMMARY_VALUE_FIELD_NAMES[entry.key]),
+    fontSize: entry.fontSize,
+    valueColor: entry.color
+  }));
 }
 
 export async function POST(request: Request) {
@@ -429,7 +536,7 @@ export async function POST(request: Request) {
   const textColor = PRIMARY_TEXT_COLOR;
 
   const rtlTitleText = wrapRtl(TITLE_TEXT);
-  const titleWidth = regularFont.widthOfTextAtSize(rtlTitleText, headingSize);
+  const titleWidth = measureTextWidth(rtlTitleText, regularFont, headingSize);
   activePage.drawText(rtlTitleText, {
     x: width - margin - titleWidth,
     y: cursorY,
@@ -445,8 +552,8 @@ export async function POST(request: Request) {
   const rtlDateLabel = wrapRtl(dateLabel);
   const rtlReferenceText = wrapRtl(referenceText);
   const maxMetaWidth = Math.max(
-    regularFont.widthOfTextAtSize(rtlDateLabel, dateSize),
-    regularFont.widthOfTextAtSize(rtlReferenceText, dateSize)
+    measureTextWidth(rtlDateLabel, regularFont, dateSize),
+    measureTextWidth(rtlReferenceText, regularFont, dateSize)
   );
   activePage.drawText(rtlReferenceText, {
     x: width - margin - maxMetaWidth,
@@ -520,17 +627,13 @@ export async function POST(request: Request) {
   };
 
   normalizedItems.forEach(({ original: item, qty, unitPriceCents }, index) => {
-    const lineTotalCents = computeLineTotalCents(qty, unitPriceCents);
-
-    const productName = item.product.name?.trim();
-    const entries: Record<ColumnKey, string> = {
-      index: formatInteger(index + 1),
-      name: productName && productName.length ? productName : '—',
-      sku: item.variant.sku || '—',
-      qty: formatQuantity(qty),
-      unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
-      total: formatCurrencyForPdf(lineTotalCents, 'line total')
-    };
+    const entries = buildTableRowEntries({
+      index,
+      qty,
+      unitPriceCents,
+      productName: item.product.name,
+      sku: item.variant.sku
+    });
 
     ensureRowSpace();
 
