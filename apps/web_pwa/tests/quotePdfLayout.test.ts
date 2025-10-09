@@ -6,11 +6,18 @@ import {
   computeColumnRectsForWidth,
   formatCurrencyForPdf,
   resolveColumnTextX,
+  resolveTableRightEdge,
+  buildSummaryTextEntries,
   validateTableColumns
 } from '@/app/api/quote/route';
+import type { ColumnRect } from '@/app/api/quote/route';
 import { stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
+import { formatILS } from '@/lib/formatter';
+import type { QuoteTotals } from '@/lib/quote';
 
 const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+const RTL_START = '\u202B';
+const RTL_END = '\u202C';
 type ColumnDefinition = (typeof TABLE_COLUMNS)[number];
 
 describe('quote PDF RTL layout helpers', () => {
@@ -127,5 +134,65 @@ describe('quote PDF RTL layout helpers', () => {
       column.key === 'total' ? { ...column, wrapValue: true } : column
     );
     expect(() => validateTableColumns(wrappedNumeric)).toThrow(/wrap values/);
+  });
+
+  test('resolveTableRightEdge uses column geometry when available', () => {
+    const sampleColumn = TABLE_COLUMNS[0];
+    const rects: ColumnRect[] = [
+      {
+        ...sampleColumn,
+        left: 420,
+        right: 420 + sampleColumn.width
+      }
+    ];
+
+    expect(resolveTableRightEdge(rects, 595, 50)).toBe(rects[0]!.right);
+  });
+
+  test('resolveTableRightEdge handles empty geometry safely', () => {
+    const pageWidth = 612;
+    const margin = 36;
+    expect(resolveTableRightEdge([], pageWidth, margin)).toBe(pageWidth - margin);
+  });
+
+  test('resolveTableRightEdge validates fallback inputs', () => {
+    expect(() => resolveTableRightEdge([], 0, 50)).toThrow(/positive finite number/);
+    expect(() => resolveTableRightEdge([], 612, -1)).toThrow(/non-negative/);
+  });
+
+  test('buildSummaryTextEntries produces wrapped and sanitized output', () => {
+    const totals: QuoteTotals = { subtotal: 31300, vat: 5321, total: 36621 };
+    const entries = buildSummaryTextEntries(totals, 0.17);
+
+    expect(entries.map((entry) => entry.key)).toEqual(['subtotal', 'vat', 'total']);
+    for (const entry of entries) {
+      expect(entry.labelText.startsWith(RTL_START)).toBe(true);
+      expect(entry.labelText.endsWith(RTL_END)).toBe(true);
+      expect(entry.valueText.startsWith(RTL_START)).toBe(true);
+      expect(entry.valueText.endsWith(RTL_END)).toBe(true);
+      const payload = entry.valueText.slice(1, -1);
+      expect(payload).toContain('₪');
+      expect(DIRECTIONAL_MARKS_REGEX.test(payload)).toBe(false);
+    }
+
+    const vatEntry = entries.find((entry) => entry.key === 'vat');
+    expect(vatEntry?.labelText.slice(1, -1)).toContain('17');
+
+    const totalEntry = entries.find((entry) => entry.key === 'total');
+    expect(totalEntry?.valueText).toBe(`${RTL_START}${formatILS(totals.total)}${RTL_END}`);
+    expect(totalEntry?.fontSize).toBe(14);
+  });
+
+  test('buildSummaryTextEntries enforces integer cents and VAT validation', () => {
+    const invalidTotals = {
+      subtotal: 101.5,
+      vat: 17,
+      total: 118.5
+    } as unknown as QuoteTotals;
+    expect(() => buildSummaryTextEntries(invalidTotals, 0.17)).toThrow(/integer number of cents/);
+
+    const zeroTotals: QuoteTotals = { subtotal: 0, vat: 0, total: 0 };
+    expect(() => buildSummaryTextEntries(zeroTotals, Number.NaN)).toThrow(/finite number/);
+    expect(() => buildSummaryTextEntries(zeroTotals, -0.1)).toThrow(/non-negative/);
   });
 });
