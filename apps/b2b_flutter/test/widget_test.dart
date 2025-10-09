@@ -2,8 +2,6 @@ import 'package:ashachar_marketplace/src/app/theme/components.dart';
 import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_page.dart';
 import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes/fake_catalog_repository.dart';

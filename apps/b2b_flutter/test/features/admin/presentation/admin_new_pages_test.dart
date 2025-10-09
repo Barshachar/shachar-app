@@ -35,7 +35,8 @@ void main() {
   });
 
   testWidgets('export scheduler page exposes toggles', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: AdminExportSchedulerPage()));
+    await tester
+        .pumpWidget(const MaterialApp(home: AdminExportSchedulerPage()));
     await tester.pumpAndSettle();
 
     expect(find.text('Data export'), findsOneWidget);

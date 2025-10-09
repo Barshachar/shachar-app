@@ -15,7 +15,7 @@ jobs:
           node-version: 20
       - name: Install
         working-directory: apps/web_pwa
-        run: npm ci || npm install
+        run: npm ci
       - name: Vitest
         working-directory: apps/web_pwa
         run: npx vitest run | tee ../../codex/vitest_full_test.log

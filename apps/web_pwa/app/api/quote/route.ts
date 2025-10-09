@@ -9,9 +9,11 @@ import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
+import { computeTotals } from '@/lib/quote';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
+const VAT_RATE = 0.17;
 
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
@@ -164,26 +166,59 @@ export async function POST(request: Request) {
   cursorY -= dateSize + 18;
 
   const columns = [
-    { key: 'index', label: '#', width: 30 },
-    { key: 'name', label: 'מוצר', width: 240 },
-    { key: 'sku', label: 'מק"ט', width: 80 },
-    { key: 'qty', label: 'כמות', width: 60 },
-    { key: 'unit', label: 'מחיר יחידה', width: 110 },
-    { key: 'total', label: 'סה"כ', width: 110 }
+    { key: 'index', label: '#', width: 30, align: 'right' as const },
+    { key: 'name', label: 'מוצר', width: 240, align: 'right' as const },
+    { key: 'sku', label: 'מק"ט', width: 80, align: 'right' as const },
+    { key: 'qty', label: 'כמות', width: 60, align: 'right' as const },
+    { key: 'unit', label: 'מחיר יחידה', width: 110, align: 'right' as const },
+    { key: 'total', label: 'סה"כ', width: 110, align: 'right' as const }
   ] as const;
 
+  const totals = computeTotals(
+    items.map((item) => ({
+      qty: item.qty,
+      unitPriceCents: item.variant.price_cents
+    })),
+    VAT_RATE
+  );
+
+  type ColumnRect = (typeof columns)[number] & {
+    left: number;
+    right: number;
+  };
+
+  const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
+  const computeColumnRects = (): ColumnRect[] => {
+    const availableLeft = Math.max(margin, width - margin - tableWidth);
+    const tableRight = availableLeft + tableWidth;
+    let currentRight = tableRight;
+
+    return columns.map((column) => {
+      const left = currentRight - column.width;
+      const rect: ColumnRect = {
+        ...column,
+        left,
+        right: currentRight
+      };
+      currentRight = left;
+      return rect;
+    });
+  };
+
   const headerSize = 12;
+  let columnRects = computeColumnRects();
   const drawHeader = () => {
-    let headerX = margin;
-    for (const column of columns) {
+    columnRects = computeColumnRects();
+    for (const column of columnRects) {
+      const textWidth = regularFont.widthOfTextAtSize(column.label, headerSize);
+      const textX = column.align === 'right' ? column.right - textWidth : column.left;
       activePage.drawText(column.label, {
-        x: headerX,
+        x: textX,
         y: cursorY,
         size: headerSize,
         font: regularFont,
         color: textColor
       });
-      headerX += column.width;
     }
   };
 
@@ -192,12 +227,13 @@ export async function POST(request: Request) {
   cursorY -= headerSize + 8;
 
   const lineHeight = 18;
-  let grandTotal = 0;
+  const rowFontSize = 12;
 
   const ensureSpace = () => {
     if (cursorY < margin + lineHeight) {
       activePage = pdfDoc.addPage();
       ({ width, height } = activePage.getSize());
+      columnRects = computeColumnRects();
       cursorY = height - margin;
       drawHeader();
       cursorY -= headerSize + 8;
@@ -206,8 +242,7 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPrice = item.variant.price_cents;
-    const lineTotal = unitPrice * item.qty;
-    grandTotal += lineTotal;
+    const lineTotal = Math.round(unitPrice * item.qty);
 
     const entries: Record<typeof columns[number]['key'], string> = {
       index: String(index + 1),
@@ -220,34 +255,65 @@ export async function POST(request: Request) {
 
     ensureSpace();
 
-    let currentX = margin;
-    for (const column of columns) {
+    for (const column of columnRects) {
       const text = entries[column.key];
       const fontToUse = column.key === 'sku' ? monoFont : regularFont;
+      const textWidth = fontToUse.widthOfTextAtSize(text, rowFontSize);
+      const textX = column.align === 'right' ? column.right - textWidth : column.left;
       activePage.drawText(text, {
-        x: currentX,
+        x: textX,
         y: cursorY,
-        size: 12,
+        size: rowFontSize,
         font: fontToUse,
         color: textColor
       });
-      currentX += column.width;
     }
 
     cursorY -= lineHeight;
   });
 
+  const vatPercentText = new Intl.NumberFormat('he-IL', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0
+  }).format(VAT_RATE * 100);
+
+  const summaryEntries = [
+    { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
+    {
+      label: `מע"מ (${vatPercentText}%)`,
+      value: totals.vat,
+      size: 12,
+      color: textColor
+    },
+    { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
+  ];
+
   cursorY -= 10;
-  ensureSpace();
-  const totalLabel = `סה"כ לתשלום: ${formatILS(grandTotal)}`;
-  const totalWidth = regularFont.widthOfTextAtSize(totalLabel, 14);
-  activePage.drawText(totalLabel, {
-    x: width - margin - totalWidth,
-    y: cursorY,
-    size: 14,
-    font: regularFont,
-    color: rgb(0.02, 0.4, 0.2)
-  });
+  for (const entry of summaryEntries) {
+    ensureSpace();
+    const valueText = formatILS(entry.value);
+    const valueWidth = regularFont.widthOfTextAtSize(valueText, entry.size);
+    const valueX = width - margin - valueWidth;
+    activePage.drawText(valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.size,
+      font: regularFont,
+      color: entry.color
+    });
+
+    const labelWidth = regularFont.widthOfTextAtSize(entry.label, entry.size);
+    const labelX = valueX - 12 - labelWidth;
+    activePage.drawText(entry.label, {
+      x: labelX,
+      y: cursorY,
+      size: entry.size,
+      font: regularFont,
+      color: textColor
+    });
+
+    cursorY -= entry.size === 14 ? 20 : 16;
+  }
 
   const pdfBytes = await pdfDoc.save();
   const pdfBuffer = Buffer.from(pdfBytes);
