@@ -46,6 +46,13 @@ type ColumnDefinition = {
   useMono: boolean;
 };
 
+export const NUMERIC_COLUMN_KEYS: ReadonlySet<ColumnKey> = new Set([
+  'index',
+  'qty',
+  'unit',
+  'total'
+]);
+
 export const TABLE_COLUMNS = [
   {
     key: 'index',
@@ -90,7 +97,7 @@ export const TABLE_COLUMNS = [
     align: 'right',
     wrapHeader: true,
     wrapValue: false,
-    useMono: true
+    useMono: false
   },
   {
     key: 'total',
@@ -99,7 +106,7 @@ export const TABLE_COLUMNS = [
     align: 'right',
     wrapHeader: true,
     wrapValue: false,
-    useMono: true
+    useMono: false
   }
 ] as const satisfies ReadonlyArray<ColumnDefinition>;
 
@@ -107,6 +114,36 @@ type ColumnRect = ColumnDefinition & {
   left: number;
   right: number;
 };
+
+export function computeColumnRectsForWidth(
+  pageWidth: number,
+  margin: number,
+  columns: ReadonlyArray<ColumnDefinition> = TABLE_COLUMNS
+): ColumnRect[] {
+  if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
+    throw new Error('pageWidth must be a positive finite number');
+  }
+  if (!Number.isFinite(margin) || margin < 0) {
+    throw new Error('margin must be a non-negative finite number');
+  }
+
+  const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
+  const idealRight = Math.max(pageWidth - margin, 0);
+  const tableLeft = Math.max(0, idealRight - tableWidth);
+  const tableRight = tableLeft + tableWidth;
+  let currentRight = tableRight;
+
+  return columns.map((column) => {
+    const left = currentRight - column.width;
+    const rect: ColumnRect = {
+      ...column,
+      left,
+      right: currentRight
+    };
+    currentRight = left;
+    return rect;
+  });
+}
 
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
@@ -197,7 +234,8 @@ function assertIntegerCents(value: number, field: string): void {
 
 export function formatCurrencyForPdf(valueCents: number, field: string): string {
   assertIntegerCents(valueCents, field);
-  return wrapRtl(formatILS(valueCents));
+  const sanitized = sanitizeNumberText(formatILS(valueCents));
+  return wrapRtl(sanitized);
 }
 
 export async function POST(request: Request) {
@@ -276,8 +314,6 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
-  const columns = TABLE_COLUMNS;
-
   const totals = computeTotals(
     items.map((item) => ({
       qty: item.qty,
@@ -286,34 +322,13 @@ export async function POST(request: Request) {
     VAT_RATE
   );
 
-  const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
-  const computeColumnRects = (): ColumnRect[] => {
-    const availableLeft = Math.max(margin, width - margin - tableWidth);
-    const tableRight = availableLeft + tableWidth;
-    let currentRight = tableRight;
-
-    return columns.map((column) => {
-      const left = currentRight - column.width;
-      const rect: ColumnRect = {
-        ...column,
-        left,
-        right: currentRight
-      };
-      currentRight = left;
-      return rect;
-    });
-  };
-
   const headerSize = 12;
-  let columnRects = computeColumnRects();
+  let columnRects = computeColumnRectsForWidth(width, margin);
   const drawHeader = () => {
-    columnRects = computeColumnRects();
+    columnRects = computeColumnRectsForWidth(width, margin);
     for (const column of columnRects) {
       const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
-      const textX =
-        column.align === 'right'
-          ? getRightAlignedX(headerText, regularFont, headerSize, column.right)
-          : column.left;
+      const textX = getRightAlignedX(headerText, regularFont, headerSize, column.right);
       activePage.drawText(headerText, {
         x: textX,
         y: cursorY,
@@ -335,7 +350,7 @@ export async function POST(request: Request) {
     if (cursorY < margin + lineHeight) {
       activePage = pdfDoc.addPage();
       ({ width, height } = activePage.getSize());
-      columnRects = computeColumnRects();
+      columnRects = computeColumnRectsForWidth(width, margin);
       cursorY = height - margin;
       drawHeader();
       cursorY -= headerSize + 8;
@@ -362,10 +377,7 @@ export async function POST(request: Request) {
       const baseText = entries[column.key];
       const displayText = column.wrapValue ? wrapRtl(baseText) : baseText;
       const fontToUse = column.useMono ? monoFont : regularFont;
-      const textX =
-        column.align === 'right'
-          ? getRightAlignedX(displayText, fontToUse, rowFontSize, column.right)
-          : column.left;
+      const textX = getRightAlignedX(displayText, fontToUse, rowFontSize, column.right);
       activePage.drawText(displayText, {
         x: textX,
         y: cursorY,

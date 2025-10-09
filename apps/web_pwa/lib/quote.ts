@@ -15,7 +15,7 @@ function assertFiniteNumber(value: number, message: string): asserts value is nu
   }
 }
 
-export function computeTotals(items: QuoteLine[], vatRate: number): QuoteTotals {
+export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number): QuoteTotals {
   assertFiniteNumber(vatRate, 'VAT rate must be a finite number');
   if (vatRate < 0) {
     throw new Error('VAT rate must be non-negative');
