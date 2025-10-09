@@ -154,4 +154,11 @@ describe('computeTotals', () => {
     expect(second).toEqual(first);
     expect(second).not.toBe(first);
   });
+
+  test('rounds VAT correctly on half-cent boundaries', () => {
+    const totals = computeTotals([{ qty: 1, unitPriceCents: 1 }], 0.5);
+    expect(totals.subtotal).toBe(1);
+    expect(totals.vat).toBe(1);
+    expect(totals.total).toBe(2);
+  });
 });

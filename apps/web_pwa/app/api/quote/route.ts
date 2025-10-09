@@ -260,7 +260,7 @@ export async function POST(request: Request) {
       width: 70,
       align: 'right' as const,
       wrapHeader: true,
-      wrapValue: false,
+      wrapValue: true,
       useMono: false
     },
     {
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
       width: 70,
       align: 'right' as const,
       wrapHeader: true,
-      wrapValue: false,
+      wrapValue: true,
       useMono: false
     }
   ] as const;
@@ -408,29 +408,30 @@ export async function POST(request: Request) {
   assertIntegerCents(totals.vat, 'vat');
   assertIntegerCents(totals.total, 'total');
 
+  const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
-    const summaryRight = columnRects[0]?.right ?? width - margin;
-    const valueText = formatILS(entry.value);
-    const valueX = getRightAlignedX(valueText, regularFont, entry.size, summaryRight);
-    activePage.drawText(valueText, {
-      x: valueX,
-      y: cursorY,
-      size: entry.size,
-      font: regularFont,
-      color: entry.color
-    });
-
-    const labelAnchor = valueX - 12;
+    const labelRightEdge = columnRects[0]?.right ?? width - margin;
     const labelText = wrapRtl(entry.label);
-    const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelAnchor);
+    const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelRightEdge);
     activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
       size: entry.size,
       font: regularFont,
       color: textColor
+    });
+
+    const valueRightEdge = labelX - summaryGap;
+    const valueText = formatILS(entry.value);
+    const valueX = getRightAlignedX(valueText, regularFont, entry.size, valueRightEdge);
+    activePage.drawText(valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.size,
+      font: regularFont,
+      color: entry.color
     });
 
     cursorY -= entry.size === 14 ? 20 : 16;
