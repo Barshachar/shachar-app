@@ -186,6 +186,11 @@ describe('quote PDF layout', () => {
   test('prepareSummaryRows returns wrapped labels and formatted amounts', () => {
     const totals: QuoteTotals = { subtotal: 12550, vat: 2134, total: 14684 };
     const rows = prepareSummaryRows(totals, 0.17);
+    const expectedFields = {
+      subtotal: 'summary subtotal',
+      vat: 'summary VAT',
+      total: 'summary total'
+    } as const;
 
     expect(rows.map((row) => row.key)).toEqual(['subtotal', 'vat', 'total']);
     for (const row of rows) {
@@ -194,6 +199,11 @@ describe('quote PDF layout', () => {
       expect(DIRECTIONAL_MARK_REGEX.test(row.label.slice(1, -1))).toBe(false);
       expect(row.value.startsWith(RTL_START)).toBe(true);
       expect(row.value.endsWith(RTL_END)).toBe(true);
+      const expectedValue = formatCurrencyForPdf(
+        totals[row.key],
+        expectedFields[row.key]
+      );
+      expect(row.value).toBe(expectedValue);
       const valuePayload = row.value.slice(1, -1);
       expect(valuePayload.includes('₪')).toBe(true);
       expect(DIRECTIONAL_MARK_REGEX.test(valuePayload)).toBe(false);

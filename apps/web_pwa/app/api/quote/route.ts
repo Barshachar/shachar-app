@@ -455,8 +455,8 @@ export async function POST(request: Request) {
 
   const totals = computeTotals(
     items.map((item) => ({
-      qty: item.qty,
-      unitPriceCents: item.variant.price_cents
+      qty: Number(item.qty),
+      unitPriceCents: Number(item.variant.price_cents)
     })),
     VAT_RATE
   );
