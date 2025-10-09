@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import type { ColumnRect } from '@/app/api/quote/route';
 import {
   buildSummaryEntries,
+  buildTableRowEntries,
   NUMERIC_COLUMN_KEYS,
   TABLE_COLUMNS,
   formatCurrencyForPdf,
@@ -11,11 +12,21 @@ import {
   prepareSummaryRows,
   resolveTableRightEdge
 } from '@/app/api/quote/route';
+import { formatILS } from '@/lib/formatter';
 import type { QuoteTotals } from '@/lib/quote';
 
 const RTL_START = '\u202B';
 const RTL_END = '\u202C';
 const DIRECTIONAL_MARK_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
+const DIRECTIONAL_MARK_STRIP_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function sanitizeNumber(text: string): string {
+  return text.replace(DIRECTIONAL_MARK_STRIP_REGEX, '');
+}
+
+function wrapRtl(text: string): string {
+  return `${RTL_START}${text}${RTL_END}`;
+}
 
 describe('quote PDF layout', () => {
   test('defines table columns in RTL order', () => {
@@ -83,6 +94,57 @@ describe('quote PDF layout', () => {
     expect(formattedQuantity.includes(RTL_START)).toBe(false);
     expect(formattedQuantity.includes(RTL_END)).toBe(false);
     expect(DIRECTIONAL_MARK_REGEX.test(formattedQuantity)).toBe(false);
+  });
+
+  test('buildTableRowEntries formats RTL-safe row output', () => {
+    const entries = buildTableRowEntries({
+      index: 0,
+      qty: 2.5,
+      unitPriceCents: 12_999,
+      productName: '  ברז פליז  ',
+      sku: ' sku-123 '
+    });
+
+    expect(entries.index).toBe('1');
+    expect(entries.name).toBe('ברז פליז');
+    expect(entries.sku).toBe('sku-123');
+
+    const quantityFormatter = new Intl.NumberFormat('he-IL', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    });
+    expect(entries.qty).toBe(sanitizeNumber(quantityFormatter.format(2.5)));
+
+    const expectedUnit = wrapRtl(sanitizeNumber(formatILS(12_999)));
+    const expectedTotal = wrapRtl(
+      sanitizeNumber(formatILS(Math.round(2.5 * 12_999)))
+    );
+    expect(entries.unit).toBe(expectedUnit);
+    expect(entries.total).toBe(expectedTotal);
+  });
+
+  test('buildTableRowEntries falls back to placeholders when metadata missing', () => {
+    const entries = buildTableRowEntries({
+      index: 4,
+      qty: 0,
+      unitPriceCents: 0,
+      productName: ' ',
+      sku: ''
+    });
+
+    expect(entries.index).toBe('5');
+    expect(entries.name).toBe('—');
+    expect(entries.sku).toBe('—');
+
+    const quantityFormatter = new Intl.NumberFormat('he-IL', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    });
+    expect(entries.qty).toBe(sanitizeNumber(quantityFormatter.format(0)));
+
+    const zeroCurrency = wrapRtl(sanitizeNumber(formatILS(0)));
+    expect(entries.unit).toBe(zeroCurrency);
+    expect(entries.total).toBe(zeroCurrency);
   });
 
   test('resolveTableRightEdge respects column geometry when available', () => {

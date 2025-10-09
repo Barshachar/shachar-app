@@ -57,6 +57,43 @@ export function formatQuantity(value: number): string {
   return sanitizeNumberText(quantityFormatter.format(value));
 }
 
+function normalizeProductName(productName: string | null | undefined): string {
+  const trimmed = productName?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : '—';
+}
+
+function normalizeSku(sku: string | null | undefined): string {
+  const trimmed = sku?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : '—';
+}
+
+export type QuoteTableRowInput = {
+  index: number;
+  qty: number;
+  unitPriceCents: number;
+  productName?: string | null;
+  sku?: string | null;
+};
+
+export function buildTableRowEntries({
+  index,
+  qty,
+  unitPriceCents,
+  productName,
+  sku
+}: QuoteTableRowInput): Record<ColumnKey, string> {
+  const lineTotalCents = computeLineTotalCents(qty, unitPriceCents);
+
+  return {
+    index: formatInteger(index + 1),
+    name: normalizeProductName(productName),
+    sku: normalizeSku(sku),
+    qty: formatQuantity(qty),
+    unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
+    total: formatCurrencyForPdf(lineTotalCents, 'line total')
+  };
+}
+
 function wrapRtl(text: string): string {
   return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
 }
@@ -527,17 +564,13 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPriceCents = Number(item.variant.price_cents);
-    const lineTotalCents = computeLineTotalCents(item.qty, unitPriceCents);
-
-    const productName = item.product.name?.trim();
-    const entries: Record<ColumnKey, string> = {
-      index: formatInteger(index + 1),
-      name: productName && productName.length ? productName : '—',
-      sku: item.variant.sku || '—',
-      qty: formatQuantity(item.qty),
-      unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
-      total: formatCurrencyForPdf(lineTotalCents, 'line total')
-    };
+    const entries = buildTableRowEntries({
+      index,
+      qty: item.qty,
+      unitPriceCents,
+      productName: item.product.name,
+      sku: item.variant.sku
+    });
 
     ensureRowSpace();
 

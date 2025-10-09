@@ -235,4 +235,26 @@ describe('computeTotals', () => {
 
     expect(() => computeTotals(items, 0)).toThrow(/safe integer number of cents/i);
   });
+
+  test('keeps totals integral with high precision VAT and fractional quantities', () => {
+    const items = [
+      { qty: 1.75, unitPriceCents: 12_345 },
+      { qty: 0.3, unitPriceCents: 99_999 }
+    ];
+    const vatRate = 0.19675;
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = Math.round(expectedSubtotal * vatRate);
+
+    const totals = computeTotals(items, vatRate);
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
 });
