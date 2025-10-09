@@ -15,6 +15,15 @@ function assertFiniteNumber(value: number, message: string): asserts value is nu
   }
 }
 
+function assertSafeIntegerCents(value: number, message: string): asserts value is number {
+  if (!Number.isInteger(value)) {
+    throw new Error(`${message} must resolve to an integer number of cents`);
+  }
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(`${message} must be a safe integer number of cents`);
+  }
+}
+
 export function computeTotals(
   items: ReadonlyArray<QuoteLine>,
   vatRate: number
@@ -39,12 +48,22 @@ export function computeTotals(
       throw new Error('Item price must be an integer number of cents');
     }
 
-    const lineTotal = Math.round(item.unitPriceCents * item.qty);
+    const lineTotalRaw = item.unitPriceCents * item.qty;
+    assertFiniteNumber(lineTotalRaw, 'Line total must be a finite number');
+    const lineTotal = Math.round(lineTotalRaw);
+    assertSafeIntegerCents(lineTotal, 'Line total');
     subtotal += lineTotal;
   }
 
-  const vat = Math.round(subtotal * vatRate);
+  assertSafeIntegerCents(subtotal, 'Subtotal');
+
+  const vatRaw = subtotal * vatRate;
+  assertFiniteNumber(vatRaw, 'VAT amount must be a finite number');
+  const vat = Math.round(vatRaw);
+  assertSafeIntegerCents(vat, 'VAT amount');
+
   const total = subtotal + vat;
+  assertSafeIntegerCents(total, 'Total amount');
 
   return {
     subtotal,

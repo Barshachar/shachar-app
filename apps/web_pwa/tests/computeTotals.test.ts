@@ -183,4 +183,19 @@ describe('computeTotals', () => {
     expect(totals.vat).toBe(expectedVat);
     expect(totals.total).toBe(expectedSubtotal + expectedVat);
   });
+
+  test('rejects line totals that overflow numeric bounds', () => {
+    const items = [
+      { qty: Number.MAX_VALUE, unitPriceCents: Number.MAX_SAFE_INTEGER }
+    ];
+
+    expect(() => computeTotals(items, 0.17)).toThrow(/line total must be a finite number/i);
+  });
+
+  test('rejects totals that exceed safe integer bounds', () => {
+    const nearLimit = Number.MAX_SAFE_INTEGER - 10;
+    const items = [{ qty: 1, unitPriceCents: nearLimit }];
+
+    expect(() => computeTotals(items, 1)).toThrow(/safe integer number of cents/i);
+  });
 });
