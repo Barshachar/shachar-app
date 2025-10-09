@@ -45,6 +45,25 @@ describe('computeTotals', () => {
     expect(totals.total).toBe(390);
   });
 
+  test('supports zero VAT and preserves integer cents', () => {
+    const items = [
+      { qty: 1, unitPriceCents: 10005 },
+      { qty: 2.5, unitPriceCents: 330 }
+    ] as const;
+    const expectedSubtotal =
+      Math.round(items[0].unitPriceCents * items[0].qty) +
+      Math.round(items[1].unitPriceCents * items[1].qty);
+
+    const totals = computeTotals(items, 0);
+    expect(totals).toEqual({
+      subtotal: expectedSubtotal,
+      vat: 0,
+      total: expectedSubtotal
+    });
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
+
   test('throws when vat rate is invalid', () => {
     expect(() => computeTotals([{ qty: 1, unitPriceCents: 100 }], Number.NaN)).toThrow(
       /VAT rate must be a finite number/

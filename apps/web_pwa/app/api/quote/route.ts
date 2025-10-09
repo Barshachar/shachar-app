@@ -15,6 +15,17 @@ const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 const VAT_RATE = 0.17;
 
+const quantityFormatter = new Intl.NumberFormat('he-IL', {
+  maximumFractionDigits: 3,
+  minimumFractionDigits: 0
+});
+
+const integerFormatter = new Intl.NumberFormat('he-IL', {
+  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+  useGrouping: false
+});
+
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
   'app',
@@ -166,12 +177,12 @@ export async function POST(request: Request) {
   cursorY -= dateSize + 18;
 
   const columns = [
-    { key: 'index', label: '#', width: 30, align: 'right' as const },
-    { key: 'name', label: 'מוצר', width: 240, align: 'right' as const },
-    { key: 'sku', label: 'מק"ט', width: 80, align: 'right' as const },
-    { key: 'qty', label: 'כמות', width: 60, align: 'right' as const },
-    { key: 'unit', label: 'מחיר יחידה', width: 110, align: 'right' as const },
-    { key: 'total', label: 'סה"כ', width: 110, align: 'right' as const }
+    { key: 'index', label: '#', width: 36, align: 'right' as const },
+    { key: 'name', label: 'מוצר', width: 180, align: 'right' as const },
+    { key: 'sku', label: 'מק"ט', width: 90, align: 'left' as const },
+    { key: 'qty', label: 'כמות', width: 70, align: 'right' as const },
+    { key: 'unit', label: 'מחיר יחידה', width: 80, align: 'right' as const },
+    { key: 'total', label: 'סה"כ', width: 80, align: 'right' as const }
   ] as const;
 
   const totals = computeTotals(
@@ -189,8 +200,7 @@ export async function POST(request: Request) {
 
   const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
   const computeColumnRects = (): ColumnRect[] => {
-    const availableLeft = Math.max(margin, width - margin - tableWidth);
-    const tableRight = availableLeft + tableWidth;
+    const tableRight = width - margin;
     let currentRight = tableRight;
 
     return columns.map((column) => {
@@ -245,11 +255,11 @@ export async function POST(request: Request) {
     const lineTotal = Math.round(unitPrice * item.qty);
 
     const entries: Record<typeof columns[number]['key'], string> = {
-      index: String(index + 1),
+      index: integerFormatter.format(index + 1),
       name: item.product.name,
       sku: item.variant.sku || '—',
-      qty: String(item.qty),
-      unit: formatILS(unitPrice),
+      qty: quantityFormatter.format(item.qty),
+      unit: formatILS(Math.round(unitPrice)),
       total: formatILS(lineTotal)
     };
 
@@ -291,7 +301,7 @@ export async function POST(request: Request) {
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
-    const valueText = formatILS(entry.value);
+    const valueText = formatILS(Math.round(entry.value));
     const valueWidth = regularFont.widthOfTextAtSize(valueText, entry.size);
     const valueX = width - margin - valueWidth;
     activePage.drawText(valueText, {
