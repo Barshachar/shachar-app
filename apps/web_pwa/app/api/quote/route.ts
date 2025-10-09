@@ -208,12 +208,24 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
+  type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
+  type ColumnAlignment = 'left' | 'right';
+  type ColumnDefinition = {
+    key: ColumnKey;
+    label: string;
+    width: number;
+    align: ColumnAlignment;
+    wrapHeader: boolean;
+    wrapValue: boolean;
+    useMono: boolean;
+  };
+
   const columns = [
     {
       key: 'index',
       label: '#',
       width: 26,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: false,
       wrapValue: false,
       useMono: true
@@ -222,7 +234,7 @@ export async function POST(request: Request) {
       key: 'name',
       label: 'מוצר',
       width: 200,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: true,
       wrapValue: true,
       useMono: false
@@ -231,7 +243,7 @@ export async function POST(request: Request) {
       key: 'sku',
       label: 'מק"ט',
       width: 84,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: true,
       wrapValue: false,
       useMono: true
@@ -240,7 +252,7 @@ export async function POST(request: Request) {
       key: 'qty',
       label: 'כמות',
       width: 52,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: true,
       wrapValue: false,
       useMono: true
@@ -249,7 +261,7 @@ export async function POST(request: Request) {
       key: 'unit',
       label: 'מחיר יחידה',
       width: 75,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: true,
       wrapValue: false,
       useMono: false
@@ -258,12 +270,12 @@ export async function POST(request: Request) {
       key: 'total',
       label: 'סה"כ',
       width: 75,
-      align: 'right' as const,
+      align: 'right',
       wrapHeader: true,
       wrapValue: false,
       useMono: false
     }
-  ] as const;
+  ] as const satisfies ReadonlyArray<ColumnDefinition>;
 
   const totals = computeTotals(
     items.map((item) => ({
@@ -273,15 +285,17 @@ export async function POST(request: Request) {
     VAT_RATE
   );
 
-  type ColumnRect = (typeof columns)[number] & {
+  type ColumnRect = ColumnDefinition & {
     left: number;
     right: number;
   };
 
   const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
   const computeColumnRects = (): ColumnRect[] => {
-    const availableLeft = Math.max(margin, width - margin - tableWidth);
-    const tableRight = availableLeft + tableWidth;
+    const desiredRight = width - margin;
+    const desiredLeft = desiredRight - tableWidth;
+    const offset = desiredLeft < margin ? margin - desiredLeft : 0;
+    const tableRight = desiredRight + offset;
     let currentRight = tableRight;
 
     return columns.map((column) => {
@@ -341,7 +355,7 @@ export async function POST(request: Request) {
     assertIntegerCents(lineTotal, 'line total');
 
     const productName = item.product.name?.trim();
-    const entries: Record<typeof columns[number]['key'], string> = {
+    const entries: Record<ColumnKey, string> = {
       index: formatInteger(index + 1),
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',

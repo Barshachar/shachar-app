@@ -92,6 +92,12 @@ describe('computeTotals', () => {
     ).toThrow(/Item price must be non-negative/);
   });
 
+  test('requires unit prices to be whole cents', () => {
+    expect(() =>
+      computeTotals([{ qty: 1, unitPriceCents: 99.5 }], 0.17)
+    ).toThrow(/integer number of cents/);
+  });
+
   test('supports zero vat rate without mutating input', () => {
     const items = [
       { qty: 1.25, unitPriceCents: 4999 },
@@ -116,6 +122,32 @@ describe('computeTotals', () => {
     expect(() =>
       computeTotals([{ qty: 1, unitPriceCents: Number.NaN }], 0.17)
     ).toThrow(/Item price must be a finite number/);
+  });
+
+  test('handles mixed precision lines and VAT rounding consistently', () => {
+    const items = [
+      { qty: 10.5, unitPriceCents: 199 },
+      { qty: 3.333, unitPriceCents: 457 },
+      { qty: 0.1, unitPriceCents: 1 }
+    ];
+
+    const totals = computeTotals(items, 0.165);
+
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = Math.round(expectedSubtotal * 0.165);
+    const expectedTotal = expectedSubtotal + expectedVat;
+
+    expect(totals).toEqual({
+      subtotal: expectedSubtotal,
+      vat: expectedVat,
+      total: expectedTotal
+    });
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
   });
 
   test('keeps subtotal, vat, and total as integers with fractional VAT rates', () => {
