@@ -96,6 +96,12 @@ describe('quote PDF RTL layout helpers', () => {
     expect(() => formatCurrencyForPdf(101.5, 'unit price')).toThrow(/integer number of cents/);
   });
 
+  test('formatCurrencyForPdf rejects unsafe integer cent magnitudes', () => {
+    expect(() =>
+      formatCurrencyForPdf(Number.MAX_SAFE_INTEGER + 1, 'unsafe cents')
+    ).toThrow(/safe integer number of cents/);
+  });
+
   test('resolveColumnTextX respects column alignment semantics', () => {
     const fakeFont = {
       widthOfTextAtSize(text: string, size: number) {

@@ -24,6 +24,12 @@ function assertSafeIntegerCents(value: number, message: string): asserts value i
   }
 }
 
+function addSafeCents(baseCents: number, deltaCents: number, label: string): number {
+  const sum = baseCents + deltaCents;
+  assertSafeIntegerCents(sum, label);
+  return sum;
+}
+
 export function computeLineTotalCents(qty: number, unitPriceCents: number): number {
   assertFiniteNumber(qty, 'Item quantity must be a finite number');
   assertFiniteNumber(unitPriceCents, 'Item price must be a finite number');
@@ -54,8 +60,7 @@ export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number):
 
   for (const item of items) {
     const lineTotal = computeLineTotalCents(item.qty, item.unitPriceCents);
-    subtotal += lineTotal;
-    assertSafeIntegerCents(subtotal, 'Subtotal');
+    subtotal = addSafeCents(subtotal, lineTotal, 'Subtotal');
   }
 
   assertSafeIntegerCents(subtotal, 'Subtotal');
@@ -65,8 +70,7 @@ export function computeTotals(items: ReadonlyArray<QuoteLine>, vatRate: number):
   const vat = Math.round(vatRaw);
   assertSafeIntegerCents(vat, 'VAT amount');
 
-  const total = subtotal + vat;
-  assertSafeIntegerCents(total, 'Total amount');
+  const total = addSafeCents(subtotal, vat, 'Total amount');
 
   return {
     subtotal,

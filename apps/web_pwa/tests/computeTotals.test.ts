@@ -76,6 +76,16 @@ describe('computeTotals', () => {
     ).toThrow(/safe integer number of cents/);
   });
 
+  test('throws when accumulating safe line totals would overflow the subtotal', () => {
+    const halfLimit = Math.floor(Number.MAX_SAFE_INTEGER / 2);
+    const items = [
+      { qty: halfLimit, unitPriceCents: 2 },
+      { qty: halfLimit, unitPriceCents: 2 }
+    ];
+
+    expect(() => computeTotals(items, 0)).toThrow(/safe integer number of cents/);
+  });
+
   test('handles large totals without losing precision', () => {
     const totals = computeTotals(
       [

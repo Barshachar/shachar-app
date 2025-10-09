@@ -563,28 +563,28 @@ export async function POST(request: Request) {
     const lineSpacing = entry.fontSize === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
     const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
-    const valueX = getRightAlignedX(entry.valueText, regularFont, entry.fontSize, tableRightEdge);
-    activePage.drawText(entry.valueText, {
-      x: valueX,
-      y: cursorY,
-      size: entry.fontSize,
-      font: regularFont,
-      color: entry.valueColor
-    });
-
-    const labelRightEdge = Math.max(valueX - summaryGap, margin);
-    const labelX = getRightAlignedX(
-      entry.labelText,
-      regularFont,
-      entry.fontSize,
-      labelRightEdge
-    );
+    const labelX = getRightAlignedX(entry.labelText, regularFont, entry.fontSize, tableRightEdge);
     activePage.drawText(entry.labelText, {
       x: labelX,
       y: cursorY,
       size: entry.fontSize,
       font: regularFont,
       color: textColor
+    });
+
+    const valueRightEdge = Math.max(labelX - summaryGap, margin);
+    const valueX = getRightAlignedX(
+      entry.valueText,
+      regularFont,
+      entry.fontSize,
+      valueRightEdge
+    );
+    activePage.drawText(entry.valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.fontSize,
+      font: regularFont,
+      color: entry.valueColor
     });
 
     cursorY -= lineSpacing;
