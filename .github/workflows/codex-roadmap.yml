@@ -1,0 +1,72 @@
+name: Codex Roadmap Agent
+on:
+  schedule:
+    - cron: "30 1 * * *"   # 01:30 UTC (~04:30 Asia/Jerusalem)
+  workflow_dispatch:
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect repo context
+        run: |
+          echo "## Recent commits" > codex_context.txt
+          git --no-pager log --pretty=format:'%h %s' -n 30 >> codex_context.txt
+          echo "\n\n## File tree (truncated)" >> codex_context.txt
+          find apps -maxdepth 3 -type f | head -n 800 >> codex_context.txt
+
+      - name: Propose next tasks with OpenAI
+        id: propose
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          jq -Rs . < codex_context.txt > ctx.json
+          cat > payload.json <<'JSON'
+          {
+            "model": "gpt-5",
+            "input": [
+              {
+                "role": "system",
+                "content": "You are a staff engineer. Return 5–10 atomic GitHub issues (1–3 hours each). Prefer tests/CI/high-impact fixes. Output STRICT JSON: {\"issues\":[{\"title\":\"...\",\"body\":\"...\",\"labels\":[\"codex:plan\"],\"estimate\":\"S|M|L\"}]}"
+              },
+              { "role": "user", "content": {"type":"text","text":"Here is repo context (commits + file tree)."} }
+            ]
+          }
+          JSON
+          jq '.input += [{"role":"user","content":{"type":"text","text":(input)}}]' payload.json < ctx.json > request.json
+          curl -sS https://api.openai.com/v1/responses \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @request.json > response.json
+          node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('response.json','utf8'));const t=r.output_text||'';fs.writeFileSync('issues.json',t||'{}');"
+          echo "issues<<EOF" >> $GITHUB_OUTPUT
+          cat issues.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub issues
+        if: ${{ steps.propose.outputs.issues != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const data = JSON.parse(process.env.ISSUES_JSON || "{}");
+            const list = Array.isArray(data.issues) ? data.issues : [];
+            const {owner, repo} = context.repo;
+            for (const it of list) {
+              await github.rest.issues.create({
+                owner, repo,
+                title: (it.title||'Untitled').slice(0,256),
+                body: (it.body||'').slice(0,50000),
+                labels: (it.labels||['codex:plan']).slice(0,10)
+              });
+            }
+        env:
+          ISSUES_JSON: ${{ steps.propose.outputs.issues }}
