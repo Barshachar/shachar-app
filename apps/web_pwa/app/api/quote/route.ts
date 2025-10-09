@@ -179,7 +179,7 @@ export async function POST(request: Request) {
   const columns = [
     { key: 'index', label: '#', width: 36, align: 'right' as const },
     { key: 'name', label: 'מוצר', width: 180, align: 'right' as const },
-    { key: 'sku', label: 'מק"ט', width: 90, align: 'left' as const },
+    { key: 'sku', label: 'מק"ט', width: 90, align: 'right' as const },
     { key: 'qty', label: 'כמות', width: 70, align: 'right' as const },
     { key: 'unit', label: 'מחיר יחידה', width: 80, align: 'right' as const },
     { key: 'total', label: 'סה"כ', width: 80, align: 'right' as const }
@@ -288,20 +288,28 @@ export async function POST(request: Request) {
   }).format(VAT_RATE * 100);
 
   const summaryEntries = [
-    { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
+    { label: 'סכום ביניים', valueCents: totals.subtotal, size: 12, color: textColor },
     {
       label: `מע"מ (${vatPercentText}%)`,
-      value: totals.vat,
+      valueCents: totals.vat,
       size: 12,
       color: textColor
     },
-    { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
-  ];
+    {
+      label: 'סה"כ לתשלום',
+      valueCents: totals.total,
+      size: 14,
+      color: rgb(0.02, 0.4, 0.2)
+    }
+  ] as const;
 
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
-    const valueText = formatILS(Math.round(entry.value));
+    const valueCents = Number.isInteger(entry.valueCents)
+      ? entry.valueCents
+      : Math.round(entry.valueCents);
+    const valueText = formatILS(valueCents);
     const valueWidth = regularFont.widthOfTextAtSize(valueText, entry.size);
     const valueX = width - margin - valueWidth;
     activePage.drawText(valueText, {
