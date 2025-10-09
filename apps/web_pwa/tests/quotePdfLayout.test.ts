@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest';
+import type { ColumnRect } from '@/app/api/quote/route';
 import {
   NUMERIC_COLUMN_KEYS,
   TABLE_COLUMNS,
   formatCurrencyForPdf,
   formatInteger,
-  formatQuantity
+  formatQuantity,
+  resolveTableRightEdge
 } from '@/app/api/quote/route';
 
 const RTL_START = '\u202B';
@@ -64,5 +66,29 @@ describe('quote PDF layout', () => {
     expect(formattedQuantity.includes(RTL_START)).toBe(false);
     expect(formattedQuantity.includes(RTL_END)).toBe(false);
     expect(DIRECTIONAL_MARK_REGEX.test(formattedQuantity)).toBe(false);
+  });
+
+  test('resolveTableRightEdge respects column geometry when available', () => {
+    const sampleColumn = TABLE_COLUMNS[0];
+    const rects: ColumnRect[] = [
+      {
+        ...sampleColumn,
+        left: 420,
+        right: 420 + sampleColumn.width
+      }
+    ];
+
+    expect(resolveTableRightEdge(rects, 595, 50)).toBe(rects[0].right);
+  });
+
+  test('resolveTableRightEdge falls back to page width minus margin', () => {
+    const pageWidth = 612;
+    const margin = 36;
+    expect(resolveTableRightEdge([], pageWidth, margin)).toBe(pageWidth - margin);
+  });
+
+  test('resolveTableRightEdge validates fallback dimensions', () => {
+    expect(() => resolveTableRightEdge([], 0, 50)).toThrow(/positive finite number/);
+    expect(() => resolveTableRightEdge([], 612, -1)).toThrow(/non-negative/);
   });
 });

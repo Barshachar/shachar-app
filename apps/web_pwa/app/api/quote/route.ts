@@ -152,10 +152,27 @@ export const TABLE_COLUMNS = RTL_COLUMN_ORDER.map((key) => ({
   ...BASE_COLUMN_DEFINITIONS[key]
 })) as const satisfies ReadonlyArray<ColumnDefinition>;
 
-type ColumnRect = ColumnDefinition & {
+export type ColumnRect = ColumnDefinition & {
   left: number;
   right: number;
 };
+
+export function resolveTableRightEdge(
+  columnRects: ReadonlyArray<ColumnRect>,
+  pageWidth: number,
+  margin: number
+): number {
+  if (columnRects.length > 0) {
+    return columnRects[0].right;
+  }
+  if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
+    throw new Error('pageWidth must be a positive finite number');
+  }
+  if (!Number.isFinite(margin) || margin < 0) {
+    throw new Error('margin must be a non-negative finite number');
+  }
+  return Math.max(pageWidth - margin, 0);
+}
 
 export function formatCurrencyForPdf(valueCents: number, field: string): string {
   assertIntegerCents(valueCents, field);
@@ -457,7 +474,7 @@ export async function POST(request: Request) {
   for (const entry of summaryEntries) {
     const lineSpacing = entry.size === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
-    const tableRightEdge = columnRects[0]?.right ?? width - margin;
+    const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
     const valueText = formatCurrencyForPdf(entry.value, entry.label);
     const valueX = getRightAlignedX(valueText, regularFont, entry.size, tableRightEdge);
     activePage.drawText(valueText, {
