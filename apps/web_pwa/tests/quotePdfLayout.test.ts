@@ -194,5 +194,8 @@ describe('quote PDF RTL layout helpers', () => {
     const zeroTotals: QuoteTotals = { subtotal: 0, vat: 0, total: 0 };
     expect(() => buildSummaryTextEntries(zeroTotals, Number.NaN)).toThrow(/finite number/);
     expect(() => buildSummaryTextEntries(zeroTotals, -0.1)).toThrow(/non-negative/);
+
+    const mismatchedTotals: QuoteTotals = { subtotal: 1000, vat: 170, total: 1169 };
+    expect(() => buildSummaryTextEntries(mismatchedTotals, 0.17)).toThrow(/subtotal plus VAT/);
   });
 });

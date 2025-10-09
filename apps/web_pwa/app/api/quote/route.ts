@@ -359,14 +359,24 @@ export function buildSummaryTextEntries(
     throw new Error('VAT rate must be non-negative');
   }
 
+  assertIntegerCents(totals.subtotal, 'summary subtotal');
+  assertIntegerCents(totals.vat, 'summary VAT');
+  assertIntegerCents(totals.total, 'summary total');
+
+  const expectedTotal = totals.subtotal + totals.vat;
+  if (totals.total !== expectedTotal) {
+    throw new Error('Summary total must equal subtotal plus VAT');
+  }
+
   const vatPercentText = sanitizeNumberText(
     VAT_PERCENT_FORMATTER.format(vatRate * 100)
   );
 
   return SUMMARY_ENTRY_DEFINITIONS.map((definition) => {
+    const rawValue = totals[definition.key];
     const rawLabel = definition.buildLabel(vatPercentText);
     const labelText = wrapRtl(rawLabel);
-    const valueText = formatCurrencyForPdf(totals[definition.key], rawLabel);
+    const valueText = formatCurrencyForPdf(rawValue, rawLabel);
     return {
       key: definition.key,
       labelText,

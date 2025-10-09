@@ -213,6 +213,27 @@ describe('computeTotals', () => {
     expect(Number.isInteger(totals.total)).toBe(true);
   });
 
+  test('preserves integer cents with very small VAT rates', () => {
+    const items = [
+      { qty: 1.25, unitPriceCents: 321 },
+      { qty: 0.75, unitPriceCents: 789 }
+    ];
+    const vatRate = 0.005;
+
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = Math.round(expectedSubtotal * vatRate);
+
+    const totals = computeTotals(items, vatRate);
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+  });
+
   test('rounds half-cent VAT boundaries upward to maintain integer cents', () => {
     const totals = computeTotals([{ qty: 1, unitPriceCents: 1 }], 0.5);
 
