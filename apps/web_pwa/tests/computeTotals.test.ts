@@ -117,4 +117,11 @@ describe('computeTotals', () => {
       computeTotals([{ qty: 1, unitPriceCents: Number.NaN }], 0.17)
     ).toThrow(/Item price must be a finite number/);
   });
+
+  test('keeps subtotal, vat, and total as integers with fractional VAT rates', () => {
+    const totals = computeTotals([{ qty: 5.75, unitPriceCents: 2899 }], 0.165);
+    expect(Number.isInteger(totals.subtotal)).toBe(true);
+    expect(Number.isInteger(totals.vat)).toBe(true);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
 });

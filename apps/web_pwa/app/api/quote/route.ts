@@ -122,6 +122,10 @@ function wrapRtl(text: string): string {
   return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
 }
 
+function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
+  return rightEdge - font.widthOfTextAtSize(text, size);
+}
+
 function assertIntegerCents(value: number, field: string): void {
   if (!Number.isInteger(value)) {
     throw new Error(`Expected ${field} to be an integer number of cents`);
@@ -166,8 +170,9 @@ export async function POST(request: Request) {
   const dateSize = 12;
   const textColor = rgb(0.1, 0.1, 0.1);
 
-  const titleWidth = regularFont.widthOfTextAtSize(TITLE_TEXT, headingSize);
-  activePage.drawText(TITLE_TEXT, {
+  const rtlTitleText = wrapRtl(TITLE_TEXT);
+  const titleWidth = regularFont.widthOfTextAtSize(rtlTitleText, headingSize);
+  activePage.drawText(rtlTitleText, {
     x: width - margin - titleWidth,
     y: cursorY,
     size: headingSize,
@@ -179,11 +184,13 @@ export async function POST(request: Request) {
   const dateLabel = `נוצר בתאריך: ${formatDate()}`;
   const quoteId = randomUUID().slice(0, 8);
   const referenceText = `מספר הצעה: ${quoteId}`;
+  const rtlDateLabel = wrapRtl(dateLabel);
+  const rtlReferenceText = wrapRtl(referenceText);
   const maxMetaWidth = Math.max(
-    regularFont.widthOfTextAtSize(dateLabel, dateSize),
-    regularFont.widthOfTextAtSize(referenceText, dateSize)
+    regularFont.widthOfTextAtSize(rtlDateLabel, dateSize),
+    regularFont.widthOfTextAtSize(rtlReferenceText, dateSize)
   );
-  activePage.drawText(referenceText, {
+  activePage.drawText(rtlReferenceText, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -191,7 +198,7 @@ export async function POST(request: Request) {
     color: textColor
   });
   cursorY -= dateSize + 6;
-  activePage.drawText(dateLabel, {
+  activePage.drawText(rtlDateLabel, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -295,8 +302,10 @@ export async function POST(request: Request) {
     columnRects = computeColumnRects();
     for (const column of columnRects) {
       const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
-      const textWidth = regularFont.widthOfTextAtSize(column.label, headerSize);
-      const textX = column.align === 'right' ? column.right - textWidth : column.left;
+      const textX =
+        column.align === 'right'
+          ? getRightAlignedX(headerText, regularFont, headerSize, column.right)
+          : column.left;
       activePage.drawText(headerText, {
         x: textX,
         y: cursorY,
@@ -326,8 +335,10 @@ export async function POST(request: Request) {
   };
 
   items.forEach((item, index) => {
-    const unitPrice = item.variant.price_cents;
+    const unitPrice = Number(item.variant.price_cents);
+    assertIntegerCents(unitPrice, 'unit price');
     const lineTotal = Math.round(unitPrice * item.qty);
+    assertIntegerCents(lineTotal, 'line total');
 
     const productName = item.product.name?.trim();
     const entries: Record<typeof columns[number]['key'], string> = {
@@ -343,11 +354,13 @@ export async function POST(request: Request) {
 
     for (const column of columnRects) {
       const baseText = entries[column.key];
-      const text = column.wrapValue ? wrapRtl(baseText) : baseText;
+      const displayText = column.wrapValue ? wrapRtl(baseText) : baseText;
       const fontToUse = column.useMono ? monoFont : regularFont;
-      const textWidth = fontToUse.widthOfTextAtSize(baseText, rowFontSize);
-      const textX = column.align === 'right' ? column.right - textWidth : column.left;
-      activePage.drawText(text, {
+      const textX =
+        column.align === 'right'
+          ? getRightAlignedX(displayText, fontToUse, rowFontSize, column.right)
+          : column.left;
+      activePage.drawText(displayText, {
         x: textX,
         y: cursorY,
         size: rowFontSize,
@@ -384,9 +397,9 @@ export async function POST(request: Request) {
   cursorY -= 10;
   for (const entry of summaryEntries) {
     ensureSpace();
+    const summaryRight = columnRects[0]?.right ?? width - margin;
     const valueText = formatILS(entry.value);
-    const valueWidth = regularFont.widthOfTextAtSize(valueText, entry.size);
-    const valueX = width - margin - valueWidth;
+    const valueX = getRightAlignedX(valueText, regularFont, entry.size, summaryRight);
     activePage.drawText(valueText, {
       x: valueX,
       y: cursorY,
@@ -396,8 +409,7 @@ export async function POST(request: Request) {
     });
 
     const labelText = wrapRtl(entry.label);
-    const labelWidth = regularFont.widthOfTextAtSize(entry.label, entry.size);
-    const labelX = valueX - 12 - labelWidth;
+    const labelX = getRightAlignedX(labelText, regularFont, entry.size, valueX - 12);
     activePage.drawText(labelText, {
       x: labelX,
       y: cursorY,
