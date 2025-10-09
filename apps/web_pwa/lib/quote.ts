@@ -35,6 +35,9 @@ export function computeTotals(
     if (item.unitPriceCents < 0) {
       throw new Error('Item price must be non-negative');
     }
+    if (!Number.isInteger(item.unitPriceCents)) {
+      throw new Error('Item price must be an integer number of cents');
+    }
 
     const lineTotal = Math.round(item.unitPriceCents * item.qty);
     subtotal += lineTotal;

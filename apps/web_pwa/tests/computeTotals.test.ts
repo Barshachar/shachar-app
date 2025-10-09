@@ -101,6 +101,12 @@ describe('computeTotals', () => {
     ).toThrow(/Item price must be non-negative/);
   });
 
+  test('requires unit prices to be whole cents', () => {
+    expect(() =>
+      computeTotals([{ qty: 1, unitPriceCents: 99.5 }], 0.17)
+    ).toThrow(/integer number of cents/);
+  });
+
   test('throws when item data is not finite', () => {
     expect(() =>
       computeTotals([{ qty: Number.POSITIVE_INFINITY, unitPriceCents: 100 }], 0.17)

@@ -64,6 +64,93 @@ function assertIntegerCents(value: number, field: string): void {
   }
 }
 
+type ColumnKey = 'index' | 'name' | 'sku' | 'qty' | 'unit' | 'total';
+type ColumnAlignment = 'left' | 'right';
+type ColumnDefinition = {
+  key: ColumnKey;
+  label: string;
+  width: number;
+  align: ColumnAlignment;
+  wrapHeader: boolean;
+  wrapValue: boolean;
+  useMono: boolean;
+};
+
+export const NUMERIC_COLUMN_KEYS: ReadonlySet<ColumnKey> = new Set([
+  'index',
+  'qty',
+  'unit',
+  'total'
+]);
+
+export const TABLE_COLUMNS = [
+  {
+    key: 'index',
+    label: '#',
+    width: 32,
+    align: 'right',
+    wrapHeader: false,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'name',
+    label: 'מוצר',
+    width: 198,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: true,
+    useMono: false
+  },
+  {
+    key: 'sku',
+    label: 'מק"ט',
+    width: 70,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'qty',
+    label: 'כמות',
+    width: 55,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'unit',
+    label: 'מחיר יחידה',
+    width: 76,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: false
+  },
+  {
+    key: 'total',
+    label: 'סה"כ',
+    width: 88,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: false
+  }
+] as const satisfies ReadonlyArray<ColumnDefinition>;
+
+type ColumnRect = ColumnDefinition & {
+  left: number;
+  right: number;
+};
+
+export function formatCurrencyForPdf(valueCents: number, field: string): string {
+  assertIntegerCents(valueCents, field);
+  const sanitized = sanitizeNumberText(formatILS(valueCents));
+  return wrapRtl(sanitized);
+}
+
 const DEFAULT_FONT_PATH = path.resolve(
   process.cwd(),
   'app',
@@ -217,62 +304,7 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
-  const columns = [
-    {
-      key: 'index',
-      label: '#',
-      width: 32,
-      align: 'right' as const,
-      wrapHeader: false,
-      wrapValue: false,
-      useMono: false
-    },
-    {
-      key: 'name',
-      label: 'מוצר',
-      width: 198,
-      align: 'right' as const,
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    },
-    {
-      key: 'sku',
-      label: 'מק"ט',
-      width: 70,
-      align: 'right' as const,
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: true
-    },
-    {
-      key: 'qty',
-      label: 'כמות',
-      width: 55,
-      align: 'right' as const,
-      wrapHeader: true,
-      wrapValue: false,
-      useMono: false
-    },
-    {
-      key: 'unit',
-      label: 'מחיר יחידה',
-      width: 70,
-      align: 'right' as const,
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    },
-    {
-      key: 'total',
-      label: 'סה"כ',
-      width: 70,
-      align: 'right' as const,
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    }
-  ] as const;
+  const columns = TABLE_COLUMNS;
 
   const totals = computeTotals(
     items.map((item) => ({
@@ -281,11 +313,6 @@ export async function POST(request: Request) {
     })),
     VAT_RATE
   );
-
-  type ColumnRect = (typeof columns)[number] & {
-    left: number;
-    right: number;
-  };
 
   const tableWidth = columns.reduce((acc, column) => acc + column.width, 0);
   const computeColumnRects = (): ColumnRect[] => {
@@ -344,32 +371,29 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPrice = Number(item.variant.price_cents);
-    assertIntegerCents(unitPrice, 'unit price');
-
     const lineTotal = Math.round(unitPrice * item.qty);
-    assertIntegerCents(lineTotal, 'line total');
 
     const productName = item.product.name?.trim();
-    const entries: Record<typeof columns[number]['key'], string> = {
+    const entries: Record<ColumnKey, string> = {
       index: formatInteger(index + 1),
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
       qty: formatQuantity(item.qty),
-      unit: formatILS(unitPrice),
-      total: formatILS(lineTotal)
+      unit: formatCurrencyForPdf(unitPrice, 'unit price'),
+      total: formatCurrencyForPdf(lineTotal, 'line total')
     };
 
     ensureSpace();
 
     for (const column of columnRects) {
       const baseText = entries[column.key];
-      const text = column.wrapValue ? wrapRtl(baseText) : baseText;
+      const displayText = column.wrapValue ? wrapRtl(baseText) : baseText;
       const fontToUse = column.useMono ? monoFont : regularFont;
       const textX =
         column.align === 'right'
-          ? getRightAlignedX(text, fontToUse, rowFontSize, column.right)
+          ? getRightAlignedX(displayText, fontToUse, rowFontSize, column.right)
           : column.left;
-      activePage.drawText(text, {
+      activePage.drawText(displayText, {
         x: textX,
         y: cursorY,
         size: rowFontSize,
@@ -404,10 +428,6 @@ export async function POST(request: Request) {
     }
   ] as const;
 
-  assertIntegerCents(totals.subtotal, 'subtotal');
-  assertIntegerCents(totals.vat, 'vat');
-  assertIntegerCents(totals.total, 'total');
-
   const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
@@ -424,7 +444,7 @@ export async function POST(request: Request) {
     });
 
     const valueRightEdge = labelX - summaryGap;
-    const valueText = formatILS(entry.value);
+    const valueText = formatCurrencyForPdf(entry.value, entry.label);
     const valueX = getRightAlignedX(valueText, regularFont, entry.size, valueRightEdge);
     activePage.drawText(valueText, {
       x: valueX,
