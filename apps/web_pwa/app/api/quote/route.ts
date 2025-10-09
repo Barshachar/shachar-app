@@ -151,10 +151,19 @@ const BASE_COLUMN_DEFINITIONS: Record<
   }
 };
 
-export const TABLE_COLUMNS = RTL_COLUMN_ORDER.map((key) => ({
-  key,
-  ...BASE_COLUMN_DEFINITIONS[key]
-})) as const satisfies ReadonlyArray<ColumnDefinition>;
+function createTableColumns(): ReadonlyArray<ColumnDefinition> {
+  const columns = RTL_COLUMN_ORDER.map((key) => {
+    const column: ColumnDefinition = {
+      key,
+      ...BASE_COLUMN_DEFINITIONS[key]
+    };
+    return Object.freeze(column) as ColumnDefinition;
+  });
+
+  return Object.freeze(columns) as ReadonlyArray<ColumnDefinition>;
+}
+
+export const TABLE_COLUMNS: ReadonlyArray<ColumnDefinition> = createTableColumns();
 
 export type ColumnRect = ColumnDefinition & {
   left: number;

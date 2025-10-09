@@ -23,6 +23,13 @@ describe('quote PDF layout', () => {
     expect(keys).toEqual(['index', 'name', 'sku', 'qty', 'unit', 'total']);
   });
 
+  test('locks table column definitions to prevent mutation', () => {
+    expect(Object.isFrozen(TABLE_COLUMNS)).toBe(true);
+    for (const column of TABLE_COLUMNS) {
+      expect(Object.isFrozen(column)).toBe(true);
+    }
+  });
+
   test('numeric columns stay right aligned without extra wrapping', () => {
     for (const column of TABLE_COLUMNS) {
       if (NUMERIC_COLUMN_KEYS.has(column.key)) {
