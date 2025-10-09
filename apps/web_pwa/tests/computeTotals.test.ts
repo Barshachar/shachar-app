@@ -91,4 +91,21 @@ describe('computeTotals', () => {
       computeTotals([{ qty: 1, unitPriceCents: -50 }], 0.17)
     ).toThrow(/Item price must be non-negative/);
   });
+
+  test('supports zero vat rate without mutating input', () => {
+    const items = [
+      { qty: 1.25, unitPriceCents: 4999 },
+      { qty: 3, unitPriceCents: 2500 }
+    ];
+    const originalSnapshot = items.map((item) => ({ ...item }));
+
+    const totals = computeTotals(items, 0);
+
+    expect(totals).toEqual({
+      subtotal: Math.round(1.25 * 4999) + Math.round(3 * 2500),
+      vat: 0,
+      total: Math.round(1.25 * 4999) + Math.round(3 * 2500)
+    });
+    expect(items).toEqual(originalSnapshot);
+  });
 });

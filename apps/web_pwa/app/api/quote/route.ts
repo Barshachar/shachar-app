@@ -205,16 +205,16 @@ export async function POST(request: Request) {
     {
       key: 'index',
       label: '#',
-      width: 30,
+      width: 26,
       align: 'right' as const,
       wrapHeader: false,
       wrapValue: false,
-      useMono: false
+      useMono: true
     },
     {
       key: 'name',
       label: 'מוצר',
-      width: 240,
+      width: 200,
       align: 'right' as const,
       wrapHeader: true,
       wrapValue: true,
@@ -223,7 +223,7 @@ export async function POST(request: Request) {
     {
       key: 'sku',
       label: 'מק"ט',
-      width: 80,
+      width: 84,
       align: 'right' as const,
       wrapHeader: true,
       wrapValue: false,
@@ -232,16 +232,16 @@ export async function POST(request: Request) {
     {
       key: 'qty',
       label: 'כמות',
-      width: 60,
+      width: 52,
       align: 'right' as const,
       wrapHeader: true,
       wrapValue: false,
-      useMono: false
+      useMono: true
     },
     {
       key: 'unit',
       label: 'מחיר יחידה',
-      width: 110,
+      width: 75,
       align: 'right' as const,
       wrapHeader: true,
       wrapValue: false,
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
     {
       key: 'total',
       label: 'סה"כ',
-      width: 110,
+      width: 75,
       align: 'right' as const,
       wrapHeader: true,
       wrapValue: false,
