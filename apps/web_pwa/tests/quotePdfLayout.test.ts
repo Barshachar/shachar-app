@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { TABLE_COLUMNS, formatCurrencyForPdf } from '@/app/api/quote/route';
+import {
+  NUMERIC_COLUMN_KEYS,
+  TABLE_COLUMNS,
+  formatCurrencyForPdf,
+  formatInteger,
+  formatQuantity
+} from '@/app/api/quote/route';
 
 const RTL_START = '\u202B';
 const RTL_END = '\u202C';
@@ -12,13 +18,20 @@ describe('quote PDF layout', () => {
   });
 
   test('numeric columns stay right aligned without extra wrapping', () => {
-    const numericKeys = new Set(['index', 'qty', 'unit', 'total']);
     for (const column of TABLE_COLUMNS) {
-      if (numericKeys.has(column.key)) {
+      if (NUMERIC_COLUMN_KEYS.has(column.key)) {
         expect(column.align).toBe('right');
         expect(column.wrapValue).toBe(false);
       }
     }
+  });
+
+  test('numeric column registry matches column definitions', () => {
+    const numericColumnKeys = TABLE_COLUMNS.filter((column) =>
+      NUMERIC_COLUMN_KEYS.has(column.key)
+    ).map((column) => column.key);
+
+    expect(numericColumnKeys).toEqual(['index', 'qty', 'unit', 'total']);
   });
 
   test('monospaced font restricted to index, sku, and quantity columns', () => {
@@ -39,5 +52,17 @@ describe('quote PDF layout', () => {
     expect(() => formatCurrencyForPdf(199.5, 'invalid cents')).toThrow(
       /integer number of cents/
     );
+  });
+
+  test('formatInteger and formatQuantity sanitize numeric output', () => {
+    const formattedIndex = formatInteger(42);
+    expect(formattedIndex.includes(RTL_START)).toBe(false);
+    expect(formattedIndex.includes(RTL_END)).toBe(false);
+    expect(DIRECTIONAL_MARK_REGEX.test(formattedIndex)).toBe(false);
+
+    const formattedQuantity = formatQuantity(12.345);
+    expect(formattedQuantity.includes(RTL_START)).toBe(false);
+    expect(formattedQuantity.includes(RTL_END)).toBe(false);
+    expect(DIRECTIONAL_MARK_REGEX.test(formattedQuantity)).toBe(false);
   });
 });

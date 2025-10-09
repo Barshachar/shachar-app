@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
@@ -38,11 +39,11 @@ function sanitizeNumberText(text: string): string {
   return stripDirectionalMarkers(text);
 }
 
-function formatInteger(value: number): string {
+export function formatInteger(value: number): string {
   return sanitizeNumberText(integerFormatter.format(value));
 }
 
-function formatQuantity(value: number): string {
+export function formatQuantity(value: number): string {
   return sanitizeNumberText(quantityFormatter.format(value));
 }
 
@@ -76,6 +77,15 @@ type ColumnDefinition = {
   useMono: boolean;
 };
 
+const RTL_COLUMN_ORDER: readonly ColumnKey[] = [
+  'index',
+  'name',
+  'sku',
+  'qty',
+  'unit',
+  'total'
+] as const;
+
 export const NUMERIC_COLUMN_KEYS: ReadonlySet<ColumnKey> = new Set([
   'index',
   'qty',
@@ -83,9 +93,11 @@ export const NUMERIC_COLUMN_KEYS: ReadonlySet<ColumnKey> = new Set([
   'total'
 ]);
 
-export const TABLE_COLUMNS = [
-  {
-    key: 'index',
+const BASE_COLUMN_DEFINITIONS: Record<
+  ColumnKey,
+  Omit<ColumnDefinition, 'key'>
+> = {
+  index: {
     label: '#',
     width: 32,
     align: 'right',
@@ -93,8 +105,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'name',
+  name: {
     label: 'מוצר',
     width: 198,
     align: 'right',
@@ -102,8 +113,7 @@ export const TABLE_COLUMNS = [
     wrapValue: true,
     useMono: false
   },
-  {
-    key: 'sku',
+  sku: {
     label: 'מק"ט',
     width: 70,
     align: 'right',
@@ -111,8 +121,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'qty',
+  qty: {
     label: 'כמות',
     width: 55,
     align: 'right',
@@ -120,8 +129,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-  {
-    key: 'unit',
+  unit: {
     label: 'מחיר יחידה',
     width: 76,
     align: 'right',
@@ -129,8 +137,7 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: false
   },
-  {
-    key: 'total',
+  total: {
     label: 'סה"כ',
     width: 88,
     align: 'right',
@@ -138,7 +145,12 @@ export const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: false
   }
-] as const satisfies ReadonlyArray<ColumnDefinition>;
+};
+
+export const TABLE_COLUMNS = RTL_COLUMN_ORDER.map((key) => ({
+  key,
+  ...BASE_COLUMN_DEFINITIONS[key]
+})) as const satisfies ReadonlyArray<ColumnDefinition>;
 
 type ColumnRect = ColumnDefinition & {
   left: number;
@@ -151,14 +163,9 @@ export function formatCurrencyForPdf(valueCents: number, field: string): string 
   return wrapRtl(sanitized);
 }
 
-const DEFAULT_FONT_PATH = path.resolve(
-  process.cwd(),
-  'app',
-  'api',
-  'quote',
-  'fonts',
-  'Inter-Regular.ttf'
-);
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+const DEFAULT_FONT_PATH = path.resolve(MODULE_DIR, 'fonts', 'Inter-Regular.ttf');
 
 let cachedFontBytes: Uint8Array | null | undefined;
 
@@ -172,6 +179,12 @@ async function tryLoadFontBytes(): Promise<Uint8Array | null> {
     candidatePaths.push(path.resolve(process.env.PDF_FONT_PATH));
   }
   candidatePaths.push(DEFAULT_FONT_PATH);
+  candidatePaths.push(
+    path.resolve(process.cwd(), 'app', 'api', 'quote', 'fonts', 'Inter-Regular.ttf')
+  );
+  candidatePaths.push(
+    path.resolve(MODULE_DIR, '../../..', 'public', 'fonts', 'NotoSansHebrew.ttf')
+  );
   candidatePaths.push(
     path.resolve(process.cwd(), 'public', 'fonts', 'NotoSansHebrew.ttf')
   );
@@ -370,8 +383,10 @@ export async function POST(request: Request) {
   };
 
   items.forEach((item, index) => {
-    const unitPrice = Number(item.variant.price_cents);
-    const lineTotal = Math.round(unitPrice * item.qty);
+    const unitPriceCents = Number(item.variant.price_cents);
+    assertIntegerCents(unitPriceCents, 'unit price cents');
+    const lineTotalCents = Math.round(unitPriceCents * item.qty);
+    assertIntegerCents(lineTotalCents, 'line total cents');
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
@@ -379,8 +394,8 @@ export async function POST(request: Request) {
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
       qty: formatQuantity(item.qty),
-      unit: formatCurrencyForPdf(unitPrice, 'unit price'),
-      total: formatCurrencyForPdf(lineTotal, 'line total')
+      unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
+      total: formatCurrencyForPdf(lineTotalCents, 'line total')
     };
 
     ensureRowSpace();

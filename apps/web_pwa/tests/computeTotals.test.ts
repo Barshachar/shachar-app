@@ -167,4 +167,20 @@ describe('computeTotals', () => {
     expect(totals.vat).toBe(1);
     expect(totals.total).toBe(2);
   });
+
+  test('ignores zero-quantity lines without affecting totals', () => {
+    const items = [
+      { qty: 0, unitPriceCents: 8888 },
+      { qty: 3, unitPriceCents: 250 }
+    ];
+
+    const totals = computeTotals(items, 0.17);
+    const expectedSubtotal =
+      Math.round(items[0].qty * items[0].unitPriceCents) +
+      Math.round(items[1].qty * items[1].unitPriceCents);
+    const expectedVat = Math.round(expectedSubtotal * 0.17);
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+  });
 });
