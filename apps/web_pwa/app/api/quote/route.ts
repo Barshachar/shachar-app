@@ -10,12 +10,11 @@ import { fetchCartItems } from '@/lib/data';
 import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
 import { computeTotals } from '@/lib/quote';
+import { sanitizeNumberText, stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 const VAT_RATE = 0.17;
-const RTL_EMBED_START = '\u202B';
-const RTL_EMBED_END = '\u202C';
 
 const quantityFormatter = new Intl.NumberFormat('he-IL', {
   minimumFractionDigits: 0,
@@ -26,12 +25,6 @@ const integerFormatter = new Intl.NumberFormat('he-IL', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0
 });
-
-const LRM_REGEX = /\u200e/g;
-
-function sanitizeNumberText(text: string): string {
-  return text.replace(LRM_REGEX, '');
-}
 
 function formatInteger(value: number): string {
   return sanitizeNumberText(integerFormatter.format(value));
@@ -53,7 +46,7 @@ type ColumnDefinition = {
   useMono: boolean;
 };
 
-const TABLE_COLUMNS = [
+export const TABLE_COLUMNS = [
   {
     key: 'index',
     label: '#',
@@ -90,25 +83,25 @@ const TABLE_COLUMNS = [
     wrapValue: false,
     useMono: true
   },
-    {
-      key: 'unit',
-      label: 'מחיר יחידה',
-      width: 75,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    },
-    {
-      key: 'total',
-      label: 'סה"כ',
-      width: 75,
-      align: 'right',
-      wrapHeader: true,
-      wrapValue: true,
-      useMono: false
-    }
-  ] as const satisfies ReadonlyArray<ColumnDefinition>;
+  {
+    key: 'unit',
+    label: 'מחיר יחידה',
+    width: 75,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  },
+  {
+    key: 'total',
+    label: 'סה"כ',
+    width: 75,
+    align: 'right',
+    wrapHeader: true,
+    wrapValue: false,
+    useMono: true
+  }
+] as const satisfies ReadonlyArray<ColumnDefinition>;
 
 type ColumnRect = ColumnDefinition & {
   left: number;
@@ -192,18 +185,19 @@ function formatDate(): string {
   }).format(new Date());
 }
 
-function wrapRtl(text: string): string {
-  return `${RTL_EMBED_START}${text}${RTL_EMBED_END}`;
-}
-
 function getRightAlignedX(text: string, font: PDFFont, size: number, rightEdge: number): number {
-  return rightEdge - font.widthOfTextAtSize(text, size);
+  return rightEdge - font.widthOfTextAtSize(stripDirectionalMarkers(text), size);
 }
 
 function assertIntegerCents(value: number, field: string): void {
   if (!Number.isInteger(value)) {
     throw new Error(`Expected ${field} to be an integer number of cents`);
   }
+}
+
+export function formatCurrencyForPdf(valueCents: number, field: string): string {
+  assertIntegerCents(valueCents, field);
+  return wrapRtl(formatILS(valueCents));
 }
 
 export async function POST(request: Request) {
@@ -350,9 +344,7 @@ export async function POST(request: Request) {
 
   items.forEach((item, index) => {
     const unitPrice = Number(item.variant.price_cents);
-    assertIntegerCents(unitPrice, 'unit price');
     const lineTotal = Math.round(unitPrice * item.qty);
-    assertIntegerCents(lineTotal, 'line total');
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
@@ -360,8 +352,8 @@ export async function POST(request: Request) {
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
       qty: formatQuantity(item.qty),
-      unit: formatILS(unitPrice),
-      total: formatILS(lineTotal)
+      unit: formatCurrencyForPdf(unitPrice, 'unit price'),
+      total: formatCurrencyForPdf(lineTotal, 'line total')
     };
 
     ensureSpace();
@@ -404,10 +396,6 @@ export async function POST(request: Request) {
     { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
   ];
 
-  assertIntegerCents(totals.subtotal, 'subtotal');
-  assertIntegerCents(totals.vat, 'vat');
-  assertIntegerCents(totals.total, 'total');
-
   const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
@@ -423,7 +411,7 @@ export async function POST(request: Request) {
       color: textColor
     });
 
-    const valueText = formatILS(entry.value);
+    const valueText = formatCurrencyForPdf(entry.value, entry.label);
     const valueRightEdge = labelX - summaryGap;
     const valueX = getRightAlignedX(valueText, regularFont, entry.size, valueRightEdge);
     activePage.drawText(valueText, {
