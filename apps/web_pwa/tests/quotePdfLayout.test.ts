@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest';
+import type { PDFFont } from 'pdf-lib';
 import {
   TABLE_COLUMNS,
   NUMERIC_COLUMN_KEYS,
   computeColumnRectsForWidth,
-  formatCurrencyForPdf
+  formatCurrencyForPdf,
+  resolveColumnTextX
 } from '@/app/api/quote/route';
+import { stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/rtl';
 
 const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
@@ -82,5 +85,28 @@ describe('quote PDF RTL layout helpers', () => {
 
   test('formatCurrencyForPdf rejects non-integer cents', () => {
     expect(() => formatCurrencyForPdf(101.5, 'unit price')).toThrow(/integer number of cents/);
+  });
+
+  test('resolveColumnTextX respects column alignment semantics', () => {
+    const fakeFont = {
+      widthOfTextAtSize(text: string, size: number) {
+        return text.length * (size / 2);
+      }
+    } as unknown as PDFFont;
+
+    const rtlText = wrapRtl('123456');
+    const sanitizedWidth =
+      stripDirectionalMarkers(rtlText).length * (10 / 2);
+
+    const rightAlignedColumn = { align: 'right', left: 80, right: 160 } as const;
+    const rightX = resolveColumnTextX(rightAlignedColumn, rtlText, fakeFont, 10);
+
+    expect(rightX).toBeCloseTo(rightAlignedColumn.right - sanitizedWidth, 5);
+    expect(rightX).toBeGreaterThanOrEqual(rightAlignedColumn.left);
+
+    const leftAlignedColumn = { align: 'left', left: 220, right: 280 } as const;
+    const leftX = resolveColumnTextX(leftAlignedColumn, rtlText, fakeFont, 10);
+
+    expect(leftX).toBe(leftAlignedColumn.left);
   });
 });

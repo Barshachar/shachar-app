@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
@@ -15,6 +16,8 @@ import { sanitizeNumberText, stripDirectionalMarkers, wrapRtl } from '@/lib/pdf/
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
 const VAT_RATE = 0.17;
+
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const quantityFormatter = new Intl.NumberFormat('he-IL', {
   minimumFractionDigits: 0,
@@ -125,6 +128,20 @@ type ColumnRect = ColumnDefinition & {
   right: number;
 };
 
+type ColumnPlacement = Pick<ColumnRect, 'align' | 'left' | 'right'>;
+
+export function resolveColumnTextX(
+  column: ColumnPlacement,
+  text: string,
+  font: PDFFont,
+  size: number
+): number {
+  if (column.align === 'right') {
+    return getRightAlignedX(text, font, size, column.right);
+  }
+  return column.left;
+}
+
 export function computeColumnRectsForWidth(
   pageWidth: number,
   margin: number,
@@ -155,14 +172,7 @@ export function computeColumnRectsForWidth(
   });
 }
 
-const DEFAULT_FONT_PATH = path.resolve(
-  process.cwd(),
-  'app',
-  'api',
-  'quote',
-  'fonts',
-  'Inter-Regular.ttf'
-);
+const DEFAULT_FONT_PATH = path.resolve(MODULE_DIR, 'fonts', 'Inter-Regular.ttf');
 
 let cachedFontBytes: Uint8Array | null | undefined;
 
@@ -176,6 +186,12 @@ async function tryLoadFontBytes(): Promise<Uint8Array | null> {
     candidatePaths.push(path.resolve(process.env.PDF_FONT_PATH));
   }
   candidatePaths.push(DEFAULT_FONT_PATH);
+  candidatePaths.push(
+    path.resolve(process.cwd(), 'app', 'api', 'quote', 'fonts', 'Inter-Regular.ttf')
+  );
+  candidatePaths.push(
+    path.resolve(MODULE_DIR, '../../..', 'public', 'fonts', 'NotoSansHebrew.ttf')
+  );
   candidatePaths.push(
     path.resolve(process.cwd(), 'public', 'fonts', 'NotoSansHebrew.ttf')
   );
@@ -338,7 +354,7 @@ export async function POST(request: Request) {
     columnRects = computeColumnRectsForWidth(width, margin);
     for (const column of columnRects) {
       const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
-      const textX = getRightAlignedX(headerText, regularFont, headerSize, column.right);
+      const textX = resolveColumnTextX(column, headerText, regularFont, headerSize);
       activePage.drawText(headerText, {
         x: textX,
         y: cursorY,
@@ -368,8 +384,10 @@ export async function POST(request: Request) {
   };
 
   items.forEach((item, index) => {
-    const unitPrice = Number(item.variant.price_cents);
-    const lineTotal = Math.round(unitPrice * item.qty);
+    const unitPriceCents = Number(item.variant.price_cents);
+    assertIntegerCents(unitPriceCents, 'unit price cents');
+    const lineTotalCents = Math.round(unitPriceCents * item.qty);
+    assertIntegerCents(lineTotalCents, 'line total cents');
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
@@ -377,8 +395,8 @@ export async function POST(request: Request) {
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
       qty: formatQuantity(item.qty),
-      unit: formatCurrencyForPdf(unitPrice, 'unit price'),
-      total: formatCurrencyForPdf(lineTotal, 'line total')
+      unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
+      total: formatCurrencyForPdf(lineTotalCents, 'line total')
     };
 
     ensureRowSpace();
@@ -387,7 +405,7 @@ export async function POST(request: Request) {
       const baseText = entries[column.key];
       const displayText = column.wrapValue ? wrapRtl(baseText) : baseText;
       const fontToUse = column.useMono ? monoFont : regularFont;
-      const textX = getRightAlignedX(displayText, fontToUse, rowFontSize, column.right);
+      const textX = resolveColumnTextX(column, displayText, fontToUse, rowFontSize);
       activePage.drawText(displayText, {
         x: textX,
         y: cursorY,
@@ -407,15 +425,19 @@ export async function POST(request: Request) {
     }).format(VAT_RATE * 100)
   );
 
+  assertIntegerCents(totals.subtotal, 'subtotal');
+  assertIntegerCents(totals.vat, 'VAT amount');
+  assertIntegerCents(totals.total, 'total');
+
   const summaryEntries = [
-    { label: 'סכום ביניים', value: totals.subtotal, size: 12, color: textColor },
+    { label: 'סכום ביניים', valueCents: totals.subtotal, size: 12, color: textColor },
     {
       label: `מע"מ (${vatPercentText}%)`,
-      value: totals.vat,
+      valueCents: totals.vat,
       size: 12,
       color: textColor
     },
-    { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
+    { label: 'סה"כ לתשלום', valueCents: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
   ];
 
   const ensureSummarySpace = (requiredHeight: number) => {
@@ -433,7 +455,7 @@ export async function POST(request: Request) {
     const lineSpacing = entry.size === 14 ? 20 : 16;
     ensureSummarySpace(lineSpacing);
     const tableRightEdge = columnRects[0]?.right ?? width - margin;
-    const valueText = formatCurrencyForPdf(entry.value, entry.label);
+    const valueText = formatCurrencyForPdf(entry.valueCents, entry.label);
     const valueX = getRightAlignedX(valueText, regularFont, entry.size, tableRightEdge);
     activePage.drawText(valueText, {
       x: valueX,

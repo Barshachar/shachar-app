@@ -212,4 +212,14 @@ describe('computeTotals', () => {
     expect(totals.total).toBe(expectedSubtotal + expectedVat);
     expect(Number.isInteger(totals.total)).toBe(true);
   });
+
+  test('rounds half-cent VAT boundaries upward to maintain integer cents', () => {
+    const totals = computeTotals([{ qty: 1, unitPriceCents: 1 }], 0.5);
+
+    expect(totals).toEqual({
+      subtotal: 1,
+      vat: 1,
+      total: 2
+    });
+  });
 });
