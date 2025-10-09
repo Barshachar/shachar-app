@@ -191,4 +191,25 @@ describe('computeTotals', () => {
     expect(Number.isInteger(first.vat)).toBe(true);
     expect(first.total).toBe(first.subtotal + first.vat);
   });
+
+  test('handles large carts without accumulating rounding drift', () => {
+    const items = Array.from({ length: 75 }, (_, index) => ({
+      qty: 0.5 + (index % 4) * 0.25,
+      unitPriceCents: 10_000 + index * 37
+    }));
+    const vatRate = 0.17;
+
+    const expectedSubtotal = items.reduce(
+      (acc, item) => acc + Math.round(item.qty * item.unitPriceCents),
+      0
+    );
+    const expectedVat = Math.round(expectedSubtotal * vatRate);
+
+    const totals = computeTotals(items, vatRate);
+
+    expect(totals.subtotal).toBe(expectedSubtotal);
+    expect(totals.vat).toBe(expectedVat);
+    expect(totals.total).toBe(expectedSubtotal + expectedVat);
+    expect(Number.isInteger(totals.total)).toBe(true);
+  });
 });

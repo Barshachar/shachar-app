@@ -346,7 +346,7 @@ export async function POST(request: Request) {
   const lineHeight = 18;
   const rowFontSize = 12;
 
-  const ensureSpace = () => {
+  const ensureRowSpace = () => {
     if (cursorY < margin + lineHeight) {
       activePage = pdfDoc.addPage();
       ({ width, height } = activePage.getSize());
@@ -371,7 +371,7 @@ export async function POST(request: Request) {
       total: formatCurrencyForPdf(lineTotal, 'line total')
     };
 
-    ensureSpace();
+    ensureRowSpace();
 
     for (const column of columnRects) {
       const baseText = entries[column.key];
@@ -408,12 +408,33 @@ export async function POST(request: Request) {
     { label: 'סה"כ לתשלום', value: totals.total, size: 14, color: rgb(0.02, 0.4, 0.2) }
   ];
 
+  const ensureSummarySpace = (requiredHeight: number) => {
+    if (cursorY < margin + requiredHeight) {
+      activePage = pdfDoc.addPage();
+      ({ width, height } = activePage.getSize());
+      columnRects = computeColumnRectsForWidth(width, margin);
+      cursorY = height - margin;
+    }
+  };
+
   const summaryGap = 16;
   cursorY -= 10;
   for (const entry of summaryEntries) {
-    ensureSpace();
+    const lineSpacing = entry.size === 14 ? 20 : 16;
+    ensureSummarySpace(lineSpacing);
+    const tableRightEdge = columnRects[0]?.right ?? width - margin;
+    const valueText = formatCurrencyForPdf(entry.value, entry.label);
+    const valueX = getRightAlignedX(valueText, regularFont, entry.size, tableRightEdge);
+    activePage.drawText(valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.size,
+      font: regularFont,
+      color: entry.color
+    });
+
     const labelText = wrapRtl(entry.label);
-    const labelRightEdge = columnRects[0]?.right ?? width - margin;
+    const labelRightEdge = Math.max(valueX - summaryGap, margin);
     const labelX = getRightAlignedX(labelText, regularFont, entry.size, labelRightEdge);
     activePage.drawText(labelText, {
       x: labelX,
@@ -423,18 +444,7 @@ export async function POST(request: Request) {
       color: textColor
     });
 
-    const valueText = formatCurrencyForPdf(entry.value, entry.label);
-    const valueRightEdge = labelX - summaryGap;
-    const valueX = getRightAlignedX(valueText, regularFont, entry.size, valueRightEdge);
-    activePage.drawText(valueText, {
-      x: valueX,
-      y: cursorY,
-      size: entry.size,
-      font: regularFont,
-      color: entry.color
-    });
-
-    cursorY -= entry.size === 14 ? 20 : 16;
+    cursorY -= lineSpacing;
   }
 
   const pdfBytes = await pdfDoc.save();

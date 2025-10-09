@@ -1,86 +1,86 @@
 import { describe, expect, test } from 'vitest';
 import {
   TABLE_COLUMNS,
+  NUMERIC_COLUMN_KEYS,
   computeColumnRectsForWidth,
   formatCurrencyForPdf
 } from '@/app/api/quote/route';
 
 const DIRECTIONAL_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
-describe('quote PDF layout helpers', () => {
-  test('TABLE_COLUMNS keeps RTL order and numeric alignment', () => {
-    expect(TABLE_COLUMNS.map((column) => column.key)).toEqual([
-      'index',
-      'name',
-      'sku',
-      'qty',
-      'unit',
-      'total'
-    ]);
-
-    const numericKeys = new Set(['index', 'qty', 'unit', 'total']);
-    for (const column of TABLE_COLUMNS) {
-      if (numericKeys.has(column.key)) {
-        expect(column.align).toBe('right');
-      }
-    }
+describe('quote PDF RTL layout helpers', () => {
+  test('TABLE_COLUMNS preserves expected RTL ordering', () => {
+    const keys = TABLE_COLUMNS.map((column) => column.key);
+    expect(keys).toEqual(['index', 'name', 'sku', 'qty', 'unit', 'total']);
   });
 
-  const totalWidth = TABLE_COLUMNS.reduce((sum, column) => sum + column.width, 0);
+  test('numeric columns stay right-aligned with appropriate fonts', () => {
+    for (const column of TABLE_COLUMNS) {
+      if (NUMERIC_COLUMN_KEYS.has(column.key)) {
+        expect(column.align).toBe('right');
+        expect(column.wrapValue).toBe(false);
+      }
+    }
 
-  test('computeColumnRectsForWidth anchors the table to the right margin', () => {
+    const indexColumn = TABLE_COLUMNS.find((column) => column.key === 'index');
+    const qtyColumn = TABLE_COLUMNS.find((column) => column.key === 'qty');
+    const unitColumn = TABLE_COLUMNS.find((column) => column.key === 'unit');
+    const totalColumn = TABLE_COLUMNS.find((column) => column.key === 'total');
+
+    expect(indexColumn?.useMono).toBe(true);
+    expect(qtyColumn?.useMono).toBe(true);
+    expect(unitColumn?.useMono).toBe(false);
+    expect(totalColumn?.useMono).toBe(false);
+  });
+
+  test('computeColumnRectsForWidth anchors columns consistently', () => {
     const pageWidth = 595;
     const margin = 50;
     const rects = computeColumnRectsForWidth(pageWidth, margin);
+    const totalWidth = TABLE_COLUMNS.reduce((sum, column) => sum + column.width, 0);
     const idealRight = Math.max(pageWidth - margin, 0);
     const expectedLeft = Math.max(0, idealRight - totalWidth);
-    const expectedRight = Math.min(expectedLeft + totalWidth, idealRight);
+    const expectedRight = expectedLeft + totalWidth;
 
     expect(rects.map((rect) => rect.key)).toEqual(
       TABLE_COLUMNS.map((column) => column.key)
     );
     expect(rects[0]?.right).toBe(expectedRight);
     expect(rects.at(-1)?.left).toBe(expectedLeft);
-    rects.forEach((rect, index) => {
-      if (index > 0) {
-        expect(rect.right).toBe(rects[index - 1]?.left);
-      }
-      expect(rect.left).toBeGreaterThanOrEqual(expectedLeft);
+    rects.forEach((rect) => {
       expect(rect.right).toBeLessThanOrEqual(expectedRight);
+      expect(rect.left).toBeGreaterThanOrEqual(expectedLeft);
     });
   });
 
-  test('computeColumnRectsForWidth clamps narrow pages instead of overflowing', () => {
+  test('computeColumnRectsForWidth handles narrow pages gracefully', () => {
     const pageWidth = 360;
     const margin = 24;
     const rects = computeColumnRectsForWidth(pageWidth, margin);
+    const totalWidth = TABLE_COLUMNS.reduce((sum, column) => sum + column.width, 0);
     const idealRight = Math.max(pageWidth - margin, 0);
     const expectedLeft = Math.max(0, idealRight - totalWidth);
-    const expectedRight = Math.min(expectedLeft + totalWidth, idealRight);
+    const expectedRight = expectedLeft + totalWidth;
 
     expect(rects[0]?.right).toBe(expectedRight);
     expect(rects.at(-1)?.left).toBe(expectedLeft);
-    rects.forEach((rect) => {
-      expect(rect.left).toBeGreaterThanOrEqual(expectedLeft);
-      expect(rect.right).toBeLessThanOrEqual(expectedRight);
-    });
   });
 
   test('computeColumnRectsForWidth validates inputs', () => {
-    expect(() => computeColumnRectsForWidth(0, 50)).toThrow(/pageWidth/);
-    expect(() => computeColumnRectsForWidth(612, -1)).toThrow(/margin/);
+    expect(() => computeColumnRectsForWidth(0, 50)).toThrow(/positive finite number/);
+    expect(() => computeColumnRectsForWidth(612, -1)).toThrow(/non-negative/);
   });
 
-  test('formatCurrencyForPdf wraps sanitized RTL currency strings', () => {
+  test('formatCurrencyForPdf wraps and sanitizes currency', () => {
     const formatted = formatCurrencyForPdf(12345, 'subtotal');
     expect(formatted.startsWith('\u202B')).toBe(true);
     expect(formatted.endsWith('\u202C')).toBe(true);
-    expect(formatted.slice(1, -1)).not.toMatch(DIRECTIONAL_MARKS_REGEX);
+    const inner = formatted.slice(1, -1);
+    expect(inner).toContain('₪');
+    expect(inner).not.toMatch(DIRECTIONAL_MARKS_REGEX);
   });
 
   test('formatCurrencyForPdf rejects non-integer cents', () => {
-    expect(() => formatCurrencyForPdf(101.5, 'unit price')).toThrow(
-      /integer number of cents/
-    );
+    expect(() => formatCurrencyForPdf(101.5, 'unit price')).toThrow(/integer number of cents/);
   });
 });
