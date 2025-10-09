@@ -466,10 +466,20 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
+  const normalizedItems = items.map((item) => {
+    const qty = Number(item.qty);
+    const unitPriceCents = Number(item.variant.price_cents);
+    return {
+      original: item,
+      qty,
+      unitPriceCents
+    };
+  });
+
   const totals = computeTotals(
-    items.map((item) => ({
-      qty: item.qty,
-      unitPriceCents: item.variant.price_cents
+    normalizedItems.map(({ qty, unitPriceCents }) => ({
+      qty,
+      unitPriceCents
     })),
     VAT_RATE
   );
@@ -509,16 +519,15 @@ export async function POST(request: Request) {
     }
   };
 
-  items.forEach((item, index) => {
-    const unitPriceCents = Number(item.variant.price_cents);
-    const lineTotalCents = computeLineTotalCents(item.qty, unitPriceCents);
+  normalizedItems.forEach(({ original: item, qty, unitPriceCents }, index) => {
+    const lineTotalCents = computeLineTotalCents(qty, unitPriceCents);
 
     const productName = item.product.name?.trim();
     const entries: Record<ColumnKey, string> = {
       index: formatInteger(index + 1),
       name: productName && productName.length ? productName : '—',
       sku: item.variant.sku || '—',
-      qty: formatQuantity(item.qty),
+      qty: formatQuantity(qty),
       unit: formatCurrencyForPdf(unitPriceCents, 'unit price'),
       total: formatCurrencyForPdf(lineTotalCents, 'line total')
     };
