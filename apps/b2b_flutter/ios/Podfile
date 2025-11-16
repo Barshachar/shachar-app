@@ -2,6 +2,10 @@ source 'https://cdn.cocoapods.org/'
 # Uncomment this line to define a global platform for your project
 platform :ios, '15.0'
 
+# Disable File Picker media/audio subspecs since the app only imports CSV documents.
+Pod::PICKER_MEDIA = false
+Pod::PICKER_AUDIO = false
+
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
