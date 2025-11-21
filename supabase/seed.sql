@@ -2,6 +2,7 @@
 truncate table audit_log cascade;
 truncate table notifications cascade;
 truncate table attachments cascade;
+truncate table payment_events cascade;
 truncate table shipments cascade;
 truncate table order_items cascade;
 truncate table orders cascade;

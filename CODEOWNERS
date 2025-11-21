@@ -1,0 +1,4 @@
+supabase/sql/**                                  @core-backend @security-review
+supabase/functions/**                            @core-backend @security-review
+apps/b2b_flutter/lib/src/features/**/data/**     @mobile-leads
+packages/dart/offline_toolkit/**                 @mobile-leads

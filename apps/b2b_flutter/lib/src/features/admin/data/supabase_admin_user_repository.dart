@@ -31,10 +31,10 @@ class SupabaseAdminUserRepository implements AdminUserRepository {
   @override
   Future<List<AdminManagedUser>> fetchUsers(
       {bool includeDisabled = true}) async {
-    final List<dynamic>? response = await _client.rpc<List<dynamic>?>(
-      'admin_list_company_users',
-    );
-    final Iterable<Map<String, dynamic>> rows = _normalizeRows(response);
+    final Map<String, dynamic> response =
+        await _invokeFunction(<String, dynamic>{'action': 'list'});
+    final Iterable<Map<String, dynamic>> rows =
+        _normalizeRows(response['users']);
     final Iterable<AdminManagedUser> mapped = rows.map(_mapUser);
     if (includeDisabled) {
       return mapped.toList(growable: false);
@@ -53,7 +53,7 @@ class SupabaseAdminUserRepository implements AdminUserRepository {
   }) async {
     final Map<String, dynamic> payload = <String, dynamic>{
       'action': 'invite',
-      'email': email,
+      'user_email': email,
       'role': _roleToString(role),
       if (fullName != null && fullName.trim().isNotEmpty)
         'full_name': fullName.trim(),
@@ -197,20 +197,25 @@ class SupabaseAdminUserRepository implements AdminUserRepository {
     return null;
   }
 
+  Future<Map<String, dynamic>> _invokeFunction(
+      Map<String, dynamic> payload) async {
+    final FunctionResponse response = await _client.functions.invoke(
+      _functionEndpoint,
+      body: payload,
+    );
+    if (response.status >= 400) {
+      throw StateError(
+        '$_functionEndpoint failed with status ${response.status}',
+      );
+    }
+    return (response.data is Map<String, dynamic>)
+        ? Map<String, dynamic>.from(response.data as Map)
+        : <String, dynamic>{};
+  }
+
   Future<_InvocationResult> _invokeOrQueue(Map<String, dynamic> payload) async {
     try {
-      final FunctionResponse response = await _client.functions.invoke(
-        _functionEndpoint,
-        body: payload,
-      );
-      if (response.status >= 400) {
-        throw StateError(
-          '$_functionEndpoint failed with status ${response.status}',
-        );
-      }
-      final Map<String, dynamic> data = (response.data is Map<String, dynamic>)
-          ? Map<String, dynamic>.from(response.data as Map)
-          : <String, dynamic>{};
+      final Map<String, dynamic> data = await _invokeFunction(payload);
       return _InvocationResult(data: data);
     } catch (error) {
       if (_shouldQueue(error)) {

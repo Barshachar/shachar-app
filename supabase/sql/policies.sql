@@ -15,7 +15,9 @@ alter table returns enable row level security;
 alter table attachments enable row level security;
 alter table notifications enable row level security;
 alter table audit_log enable row level security;
+set role supabase_storage_admin;
 alter table if exists storage.objects enable row level security;
+reset role;
 alter table cost_centers enable row level security;
 alter table payment_terms_templates enable row level security;
 alter table vendor_payment_term_settings enable row level security;
@@ -29,6 +31,7 @@ alter table customer_profiles enable row level security;
 alter table vendor_metrics enable row level security;
 alter table saved_lists enable row level security;
 alter table saved_list_items enable row level security;
+alter table payment_events enable row level security;
 
 -- Companies
 create policy companies_admin_all on companies
@@ -142,10 +145,6 @@ create policy inventory_vendor_rw on inventory
          and p.vendor_company_id = auth_company_id()
     )
   );
-
-create policy inventory_customer_read on inventory
-  for select to authenticated
-  using (auth_role() in ('customer_admin','buyer') or auth_role() in ('vendor_admin','vendor_user'));
 
 -- Price Lists
 create policy price_lists_admin_all on price_lists
@@ -383,6 +382,10 @@ create policy vendor_metrics_company_access on vendor_metrics
     and auth_role() in ('vendor_admin','vendor_user')
   );
 
+-- Payment events
+create policy payment_events_admin_all on payment_events
+  for all using (auth_role() = 'admin') with check (auth_role() = 'admin');
+
 -- Saved lists
 create policy saved_lists_admin_all on saved_lists
   for all using (auth_role() = 'admin') with check (auth_role() = 'admin');
@@ -435,13 +438,6 @@ create policy orders_customer_rw on orders
   with check (
     auth_role() in ('customer_admin','buyer')
     and customer_company_id = auth_company_id()
-  );
-
-create policy orders_vendor_read on orders
-  for select to authenticated
-  using (
-    auth_role() in ('vendor_admin','vendor_user')
-    and order_has_vendor(orders.id, auth_company_id())
   );
 
 -- Order Items
@@ -527,7 +523,22 @@ create policy notifications_owner_rw on notifications
 create policy audit_log_admin_read on audit_log
   for select using (auth_role() = 'admin');
 
+create policy audit_log_customer_orders_read on audit_log
+  for select to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and table_name = 'orders'
+    and exists (
+      select 1
+        from orders o
+       where o.id = audit_log.row_id
+         and o.customer_company_id = auth_company_id()
+    )
+  );
+
 -- Storage Objects (Supabase Storage RLS)
+set role supabase_storage_admin;
+set search_path = public, storage;
 create policy storage_admin_read
   on storage.objects for select
   using (auth_role() = 'admin');
@@ -536,90 +547,7 @@ create policy storage_admin_all
   on storage.objects for all
   using (auth_role() = 'admin')
   with check (auth_role() = 'admin');
-
--- ----------
--- Negative tests to guard against cross-tenant leakage
--- These DO blocks raise exceptions if RLS permits cross-tenant access.
-
--- Vendor should not read other customers' orders
-set local role authenticated;
-set session "request.jwt.claims" = '{"role": "vendor_admin", "company_id": "20000000-0000-0000-0000-000000000000"}';
-DO $$
-DECLARE leak uuid;
-BEGIN
-  SELECT id INTO leak
-    FROM orders
-   WHERE customer_company_id <> auth_company_id()
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION 'RLS violation: vendor can read foreign customer order %', leak;
-  END IF;
-END$$;
-
--- Customer should not read other companies' sensitive data (orders)
-set session "request.jwt.claims" = '{"role": "buyer", "company_id": "30000000-0000-0000-0000-000000000000"}';
-DO $$
-DECLARE leak uuid;
-BEGIN
-  SELECT id INTO leak
-    FROM orders
-   WHERE customer_company_id <> auth_company_id()
-   LIMIT 1;
-  IF FOUND THEN
-    RAISE EXCEPTION 'RLS violation: customer can read foreign order %', leak;
-  END IF;
-END$$;
-
--- Cross-tenant write attempt should fail (vendor updating another vendor product)
-set session "request.jwt.claims" = '{"role": "vendor_admin", "company_id": "20000000-0000-0000-0000-000000000000"}';
-DO $$
-BEGIN
-  UPDATE products
-     SET name = name || jsonb_build_object('rls', 'fail')
-   WHERE vendor_company_id <> auth_company_id();
-  IF FOUND THEN
-    RAISE EXCEPTION 'RLS violation: vendor updated foreign product';
-  END IF;
-END$$;
-
--- Customer insert should be scoped to its tenant orders only
-set session "request.jwt.claims" = '{"role": "buyer", "company_id": "30000000-0000-0000-0000-000000000000", "sub": "33333333-3333-3333-3333-333333333333"}';
-DO $$
-DECLARE
-  foreign_order uuid;
-  foreign_variant uuid;
-  foreign_vendor uuid;
-BEGIN
-  SELECT oi.order_id, oi.variant_id, oi.vendor_company_id
-    INTO foreign_order, foreign_variant, foreign_vendor
-    FROM order_items oi
-    JOIN orders o ON o.id = oi.order_id
-   WHERE o.customer_company_id <> auth_company_id()
-   LIMIT 1;
-
-  IF foreign_order IS NULL THEN
-    RAISE NOTICE 'Skipping order_items cross-tenant test: no foreign data available';
-    RETURN;
-  END IF;
-
-  BEGIN
-    INSERT INTO order_items(order_id, vendor_company_id, variant_id, qty, uom, unit_price, discount_pct, tax_rate)
-    VALUES (foreign_order, foreign_vendor, foreign_variant, 1, 'EA', 1, 0, 17);
-    RAISE EXCEPTION 'RLS violation: customer inserted into foreign order';
-  EXCEPTION
-    WHEN insufficient_privilege THEN
-      NULL; -- expected due to RLS
-    WHEN raise_exception THEN
-      RAISE; -- propagate explicit failures
-    WHEN OTHERS THEN
-      -- ensure we only swallow typical RLS errors
-      IF SQLSTATE <> '42501' THEN
-        RAISE;
-      END IF;
-  END;
-
-  -- cleanup in case insert somehow succeeded before exception;
-END$$;
-
-reset session "request.jwt.claims";
+reset search_path;
 reset role;
+
+-- Assertions moved to supabase/tests/rls_assertions.sql

@@ -7,13 +7,20 @@ import 'package:hive/hive.dart';
 void main() {
   late Directory tempDir;
   late OfflineCacheManager manager;
+  late OTDeps deps;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('offline_cache_test');
     HiveInitializer.debugInitializerOverride = () async {
       Hive.init('${tempDir.path}/hive');
     };
-    manager = OfflineCacheManager();
+    deps = OTDeps(
+      logger: const OTNoopLogger(),
+      clock: const SystemOTClock(),
+      net: const StaticNetStatus(true),
+      tenant: const StaticTenantResolver('tenant_a'),
+    );
+    manager = OfflineCacheManager(deps: deps);
     await manager.initialize();
   });
 

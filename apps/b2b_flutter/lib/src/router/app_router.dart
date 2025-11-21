@@ -3,59 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:ashachar_marketplace/src/app/home/home_page.dart';
 import 'package:ashachar_marketplace/src/auth/auth_models.dart';
-import 'package:ashachar_marketplace/src/auth/login_page.dart';
 import 'package:ashachar_marketplace/src/auth/user_profile_provider.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_audit_log_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_catalog_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_contact_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_customers_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_dashboard_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_dock_scheduling_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_orders_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_order_approval_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_payables_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_price_lists_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_reports_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_settings_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_users_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/admin_export_scheduler_page.dart';
-import 'package:ashachar_marketplace/src/features/admin/presentation/vendor_queue_page.dart';
-import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_page.dart';
-import 'package:ashachar_marketplace/src/features/billing/presentation/business_credit_page.dart';
-import 'package:ashachar_marketplace/src/features/billing/presentation/payment_terms_page.dart';
-import 'package:ashachar_marketplace/src/features/finance/presentation/cost_centers_page.dart';
-import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_page.dart';
-import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_search_page.dart';
-import 'package:ashachar_marketplace/src/features/catalog/presentation/product_page.dart';
-import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
-import 'package:ashachar_marketplace/src/features/customer/customer_home_page.dart';
-import 'package:ashachar_marketplace/src/features/customer/customer_company_profile_page.dart';
-import 'package:ashachar_marketplace/src/features/customer/profile_page.dart';
-import 'package:ashachar_marketplace/src/features/customer/settings_page.dart';
-import 'package:ashachar_marketplace/src/features/customer/help_page.dart';
-import 'package:ashachar_marketplace/src/features/lists/presentation/saved_lists_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/cart_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/checkout_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/order_detail_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/orders_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/packing_station_page.dart';
-import 'package:ashachar_marketplace/src/features/inventory/presentation/putaway_map_page.dart';
-import 'package:ashachar_marketplace/src/features/promotions/presentation/promotions_page.dart';
-import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_orders_page.dart';
-import 'package:ashachar_marketplace/src/features/support/presentation/support_tickets_page.dart';
-import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_products_page.dart';
-import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_directory_page.dart';
+import 'package:ashachar_marketplace/src/router/guards/auth_guards.dart';
+import 'package:ashachar_marketplace/src/router/route_config.dart';
+import 'package:ashachar_marketplace/src/router/routes_admin.dart';
+import 'package:ashachar_marketplace/src/router/routes_catalog.dart';
+import 'package:ashachar_marketplace/src/router/routes_orders.dart';
 import 'package:ashachar_marketplace/src/widgets/loading_scaffold.dart';
 
 const String _initialOverride =
     String.fromEnvironment('INITIAL_ROUTE', defaultValue: '/');
 
+final List<RouteDefinition> _shellRoutes = <RouteDefinition>[
+  ...buildCatalogRoutes(),
+  ...buildOrderRoutes(),
+  ...buildAdminRoutes(),
+];
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final refreshNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> refreshNotifier = ValueNotifier<int>(0);
   final LoggingNavigatorObserver navObserver = LoggingNavigatorObserver();
-  final sub = ref.listen<AsyncValue<UserProfile?>>(
+  final ProviderSubscription<AsyncValue<UserProfile?>> sub =
+      ref.listen<AsyncValue<UserProfile?>>(
     userProfileProvider,
     (_, __) => refreshNotifier.value++,
     fireImmediately: true,
@@ -67,262 +37,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     observers: [navObserver],
     routes: [
       loadingRoute,
-      GoRoute(
-        path: '/',
-        name: 'root',
-        redirect: (context, state) {
-          final user = ref.read(userProfileProvider).asData?.value;
-          if (user == null) {
-            return '/home';
-          }
-          switch (user.role) {
-            case UserRole.admin:
-              return '/admin';
-            case UserRole.vendorAdmin:
-            case UserRole.vendorUser:
-              return '/vendor';
-            case UserRole.customerAdmin:
-            case UserRole.buyer:
-              return '/customer';
-          }
-        },
-      ),
+      _buildRootRoute(ref),
       ShellRoute(
         builder: (context, state, child) => child,
-        routes: [
-          GoRoute(
-            path: '/home',
-            name: 'home',
-            builder: (context, state) => const HomePage(),
-          ),
-          GoRoute(
-            path: '/login',
-            name: 'login',
-            builder: (context, state) => const LoginPage(),
-          ),
-          GoRoute(
-            path: '/catalog',
-            name: 'catalog',
-            builder: (context, state) => const CatalogPage(),
-            routes: [
-              GoRoute(
-                path: 'product/:id',
-                name: 'product',
-                builder: (context, state) => ProductPage(
-                  productId: state.pathParameters['id']!,
-                ),
-              ),
-              GoRoute(
-                path: 'search',
-                name: 'catalog-search',
-                builder: (context, state) => const CatalogSearchPage(),
-              ),
-              GoRoute(
-                path: 'quick-order',
-                name: 'quick-order',
-                builder: (context, state) => const QuickOrderPage(),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/finance/business-credit',
-            name: 'business-credit',
-            builder: (context, state) => const BusinessCreditPage(),
-          ),
-          GoRoute(
-            path: '/finance/payment-terms',
-            name: 'payment-terms',
-            builder: (context, state) => const PaymentTermsPage(),
-          ),
-          GoRoute(
-            path: '/finance/cost-centers',
-            name: 'cost-centers',
-            builder: (context, state) => const CostCentersPage(),
-          ),
-          GoRoute(
-            path: '/promotions',
-            name: 'promotions',
-            builder: (context, state) => const PromotionsPage(),
-          ),
-          GoRoute(
-            path: '/customer',
-            name: 'customer-home',
-            builder: (context, state) => const CustomerHomePage(),
-            routes: [
-              GoRoute(
-                path: 'cart',
-                name: 'cart',
-                builder: (context, state) => const CartPage(),
-                routes: [
-                  GoRoute(
-                    path: 'checkout',
-                    name: 'checkout',
-                    builder: (context, state) {
-                      final String orderId = (state.extra as String?) ?? '';
-                      return CheckoutPage(orderId: orderId);
-                    },
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'orders',
-                name: 'customer-orders',
-                builder: (context, state) => const OrdersPage(),
-                routes: [
-                  GoRoute(
-                    path: ':id',
-                    name: 'order-detail',
-                    builder: (context, state) => OrderDetailPage(
-                      orderId: state.pathParameters['id']!,
-                    ),
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'approvals',
-                name: 'customer-approvals',
-                builder: (context, state) => const ApprovalsInboxPage(),
-              ),
-              GoRoute(
-                path: 'lists',
-                name: 'saved-lists',
-                builder: (context, state) => const SavedListsPage(),
-              ),
-              GoRoute(
-                path: 'profile',
-                name: 'profile',
-                builder: (context, state) => const ProfilePage(),
-              ),
-              GoRoute(
-                path: 'company-profile',
-                name: 'company-profile',
-                builder: (context, state) {
-                  final String? companyId = state.extra as String?;
-                  return CustomerCompanyProfilePage(companyId: companyId);
-                },
-              ),
-              GoRoute(
-                path: 'settings',
-                name: 'settings',
-                builder: (context, state) => const SettingsPage(),
-              ),
-              GoRoute(
-                path: 'help',
-                name: 'help',
-                builder: (context, state) => const HelpPage(),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/vendor',
-            name: 'vendor-home',
-            builder: (context, state) => const VendorOrdersPage(),
-            routes: [
-              GoRoute(
-                path: 'products',
-                name: 'vendor-products',
-                builder: (context, state) => const VendorProductsPage(),
-              ),
-              GoRoute(
-                path: 'directory',
-                name: 'vendor-directory',
-                builder: (context, state) => const VendorDirectoryPage(),
-              ),
-              GoRoute(
-                path: 'packing-station',
-                name: 'packing-station',
-                builder: (context, state) => const PackingStationPage(),
-              ),
-              GoRoute(
-                path: 'putaway-map',
-                name: 'putaway-map',
-                builder: (context, state) => const PutawayMapPage(),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/admin',
-            name: 'admin-home',
-            builder: (context, state) => const AdminDashboardPage(),
-            routes: [
-              GoRoute(
-                path: 'vendor-queue',
-                name: 'vendor-queue',
-                builder: (context, state) => const VendorQueuePage(),
-              ),
-              GoRoute(
-                path: 'customers',
-                name: 'admin-customers',
-                builder: (context, state) => const AdminCustomersPage(),
-              ),
-              GoRoute(
-                path: 'users',
-                name: 'admin-users',
-                builder: (context, state) => const AdminUsersPage(),
-              ),
-              GoRoute(
-                path: 'catalog',
-                name: 'admin-catalog',
-                builder: (context, state) => const AdminCatalogPage(),
-              ),
-              GoRoute(
-                path: 'price-lists',
-                name: 'price-lists',
-                builder: (context, state) => const AdminPriceListsPage(),
-              ),
-              GoRoute(
-                path: 'orders',
-                name: 'admin-orders',
-                builder: (context, state) => const AdminOrdersPage(),
-              ),
-              GoRoute(
-                path: 'reports',
-                name: 'admin-reports',
-                builder: (context, state) => const AdminReportsPage(),
-              ),
-              GoRoute(
-                path: 'support',
-                name: 'admin-support',
-                builder: (context, state) => const SupportTicketsPage(),
-              ),
-              GoRoute(
-                path: 'contact',
-                name: 'admin-contact',
-                builder: (context, state) => const AdminContactPage(),
-              ),
-              GoRoute(
-                path: 'dock-scheduling',
-                name: 'admin-dock',
-                builder: (context, state) => const AdminDockSchedulingPage(),
-              ),
-              GoRoute(
-                path: 'payables',
-                name: 'admin-payables',
-                builder: (context, state) => const AdminPayablesPage(),
-              ),
-              GoRoute(
-                path: 'exports',
-                name: 'admin-exports',
-                builder: (context, state) => const AdminExportSchedulerPage(),
-              ),
-              GoRoute(
-                path: 'order-approval',
-                name: 'admin-order-approval',
-                builder: (context, state) => const AdminOrderApprovalPage(),
-              ),
-              GoRoute(
-                path: 'audit-log',
-                name: 'admin-audit-log',
-                builder: (context, state) => const AdminAuditLogPage(),
-              ),
-              GoRoute(
-                path: 'settings',
-                name: 'admin-settings',
-                builder: (context, state) => const AdminSettingsPage(),
-              ),
-            ],
-          ),
-        ],
+        routes: _buildShellRoutes(ref),
       ),
     ],
     redirect: (context, state) {
@@ -342,11 +60,109 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
   navObserver.attach(router);
   ref.onDispose(() {
-    sub.close();
     refreshNotifier.dispose();
   });
   return router;
 });
+
+GoRoute _buildRootRoute(Ref ref) {
+  return GoRoute(
+    path: '/',
+    name: 'root',
+    redirect: (context, state) {
+      final UserProfile? user = ref.read(userProfileProvider).asData?.value;
+      if (user == null) {
+        return '/home';
+      }
+      switch (user.role) {
+        case UserRole.admin:
+          return '/admin';
+        case UserRole.vendorAdmin:
+        case UserRole.vendorUser:
+          return '/vendor';
+        case UserRole.customerAdmin:
+        case UserRole.buyer:
+          return '/customer';
+      }
+    },
+  );
+}
+
+List<RouteBase> _buildShellRoutes(Ref ref) {
+  return _shellRoutes
+      .map((RouteDefinition def) => _buildGoRoute(def, ref, const []))
+      .toList();
+}
+
+GoRoute _buildGoRoute(
+  RouteDefinition def,
+  Ref ref,
+  List<RouteGuard> inherited,
+) {
+  final List<RouteGuard> combined = <RouteGuard>[
+    ...inherited,
+    ...def.guards,
+  ];
+  return GoRoute(
+    path: def.path,
+    name: def.name,
+    builder: def.builder,
+    redirect: (context, state) {
+      final String? guardRedirect = evaluateGuards(ref, combined);
+      if (guardRedirect != null) {
+        return guardRedirect;
+      }
+      return def.redirect?.call(context, state);
+    },
+    routes: def.routes
+        .map((RouteDefinition child) => _buildGoRoute(child, ref, combined))
+        .toList(),
+  );
+}
+
+List<RouteSnapshot> buildRouteSnapshot() {
+  final List<RouteSnapshot> snapshots = <RouteSnapshot>[
+    RouteSnapshot(path: '/loading', name: 'loading', guards: const []),
+    RouteSnapshot(path: '/', name: 'root', guards: const []),
+  ];
+  _collectSnapshots(_shellRoutes, snapshots, '', const []);
+  return snapshots;
+}
+
+void _collectSnapshots(
+  List<RouteDefinition> routes,
+  List<RouteSnapshot> acc,
+  String parentPath,
+  List<RouteGuard> inherited,
+) {
+  for (final RouteDefinition def in routes) {
+    final List<RouteGuard> combined = <RouteGuard>[
+      ...inherited,
+      ...def.guards,
+    ];
+    final String fullPath = _resolvePath(parentPath, def.path);
+    acc.add(
+      RouteSnapshot(
+        path: fullPath,
+        name: def.name,
+        guards: combined.map((RouteGuard guard) => guard.name).toList(),
+      ),
+    );
+    _collectSnapshots(def.routes, acc, fullPath, combined);
+  }
+}
+
+String _resolvePath(String parent, String child) {
+  if (child.startsWith('/')) {
+    return child;
+  }
+  if (parent.isEmpty || parent == '/') {
+    final String normalized =
+        child.startsWith('/') ? child.substring(1) : child;
+    return '/$normalized';
+  }
+  return '$parent/${child.replaceAll('//', '/')}';
+}
 
 final appThemeProvider = Provider<AppTheme>((ref) => AppTheme());
 

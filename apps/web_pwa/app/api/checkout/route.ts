@@ -3,8 +3,15 @@ import { ensureSessionId } from '@/lib/session';
 import { fetchCartItems, createOrUpdateOrder } from '@/lib/data';
 import { computeCartTotal } from '@/lib/pricing';
 import { buildCardcomRedirect } from '@/lib/cardcom';
+import { assertLocalMode } from '@/lib/local-mode';
 
 export async function POST() {
+  try {
+    assertLocalMode();
+  } catch (response) {
+    return response as Response;
+  }
+
   const sessionId = ensureSessionId();
   const items = await fetchCartItems(sessionId);
 

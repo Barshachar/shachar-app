@@ -3,27 +3,39 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
 
-import 'package:ashachar_marketplace/src/auth/session_provider.dart';
-import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
+import 'package:offline_toolkit/src/offline/deps.dart';
 import 'package:offline_toolkit/src/offline/queue/offline_queue.dart';
+
+typedef OTSyncHook = Future<void> Function();
+
+final offlineSyncHooksProvider = Provider<List<OTSyncHook>>((ref) {
+  return const <OTSyncHook>[];
+});
 
 final syncSchedulerProvider = Provider<SyncScheduler>((ref) {
   final OfflineQueue queue = ref.watch(offlineQueueProvider);
-  final SessionController session =
-      ref.watch(sessionControllerProvider.notifier);
-  return SyncScheduler(queue: queue, sessionController: session, ref: ref);
+  final OTDeps deps = ref.watch(otDepsProvider);
+  final List<OTSyncHook> hooks = ref.watch(offlineSyncHooksProvider);
+  return SyncScheduler(queue: queue, deps: deps, hooks: hooks);
 });
 
 class SyncScheduler {
   SyncScheduler({
-    required this.queue,
-    required this.sessionController,
-    required this.ref,
-  });
+    required OfflineQueue queue,
+    required this.deps,
+    this.hooks = const <OTSyncHook>[],
+  }) : _flushQueue = queue.flush;
 
-  final OfflineQueue queue;
-  final SessionController sessionController;
-  final Ref ref;
+  @visibleForTesting
+  SyncScheduler.test({
+    required Future<void> Function() flushQueue,
+    required this.deps,
+    this.hooks = const <OTSyncHook>[],
+  }) : _flushQueue = flushQueue;
+
+  final OTDeps deps;
+  final List<OTSyncHook> hooks;
+  final Future<void> Function() _flushQueue;
 
   Future<void> initialize() async {
     if (!_supportsBackgroundTasks) {
@@ -44,30 +56,51 @@ class SyncScheduler {
   }
 
   Future<void> syncNow() async {
-    if (!sessionController.isAuthenticated) {
+    String tenantId;
+    try {
+      tenantId = await deps.tenant.activeCompanyId();
+    } catch (error) {
+      deps.logger.warn(
+        'offline.sync.skip_no_tenant',
+        {'error': error.toString()},
+      );
       return;
     }
+    final bool isOnline = await deps.net.isOnline();
+    if (!isOnline) {
+      deps.logger.info(
+        'offline.sync.skip_offline',
+        {'tenant': tenantId},
+      );
+      return;
+    }
+    deps.logger.info('offline.sync.start', {'tenant': tenantId});
     try {
-      await queue.flush();
+      await _flushQueue();
     } catch (error, stackTrace) {
-      debugPrint('[OFFLINE] queue_flush_failed error=$error');
-      debugPrintStack(stackTrace: stackTrace);
+      deps.logger.error(
+        'offline.sync.queue_failed',
+        {'error': error.toString(), 'tenant': tenantId},
+      );
+      debugPrintStack(stackTrace: stackTrace, label: '[OFFLINE]');
     }
 
     try {
-      await _refreshCaches();
+      await _runHooks();
     } catch (error, stackTrace) {
-      debugPrint('[OFFLINE] cache_refresh_failed error=$error');
-      debugPrintStack(stackTrace: stackTrace);
+      deps.logger.warn(
+        'offline.sync.hooks_failed',
+        {'error': error.toString(), 'tenant': tenantId},
+      );
+      debugPrintStack(stackTrace: stackTrace, label: '[OFFLINE]');
     }
+    deps.logger.info('offline.sync.complete', {'tenant': tenantId});
   }
 
-  Future<void> _refreshCaches() async {
-    final CatalogRepository catalog = ref.read(catalogRepositoryProvider);
-    await Future.wait([
-      catalog.fetchCategories(refresh: true),
-      catalog.fetchProducts(refresh: true),
-    ]);
+  Future<void> _runHooks() async {
+    for (final OTSyncHook hook in hooks) {
+      await hook();
+    }
   }
 
   bool get _supportsBackgroundTasks {

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ashachar_marketplace/src/app/app_bootstrap.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/offline/offline_toolkit_overrides.dart';
 import 'package:ashachar_marketplace/src/router/app_router.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/widgets/loading_scaffold.dart';
@@ -51,7 +52,9 @@ Future<void> main() async {
       String.fromEnvironment('INITIAL_ROUTE', defaultValue: '/');
   const String env = String.fromEnvironment('ENV', defaultValue: 'prod');
   debugPrint('[NAV] initial=$initialRoute (ENV=$env)');
-  final container = ProviderContainer();
+  final container = ProviderContainer(
+    overrides: buildOfflineToolkitOverrides() as dynamic,
+  );
   final Future<void> bootstrapFuture =
       AppBootstrap(container: container).initialize();
   runApp(UncontrolledProviderScope(

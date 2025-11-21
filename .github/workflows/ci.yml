@@ -1,62 +1,187 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
+  push:
+    branches: [ main ]
 
 jobs:
-  flutter:
-    name: Flutter (apps/b2b_flutter)
-    if: ${{ vars.RUN_FLUTTER_CI == '1' }}
-    continue-on-error: true
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard service-role usage (PWA)
+        run: .ci/guard-service-role.sh
+
+  guard-offline-toolkit-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: .ci/guard-offline-toolkit-imports.sh
+
+  guard-typegen-ts:
+    name: Guard Supabase TS typegen
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: corepack enable
+      - run: bash .ci/guard-typegen-ts.sh
+
+  pwa-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Ensure pnpm available
+        run: corepack enable && pnpm -v || npm i -g pnpm
+      - name: Install dependencies
+        working-directory: apps/web_pwa
+        run: pnpm i --frozen-lockfile
+      - name: Typecheck PWA
+        working-directory: apps/web_pwa
+        run: pnpm run typecheck
+      - name: Run Vitest
+        working-directory: apps/web_pwa
+        run: pnpm test
+
+  flutter-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
-      - name: Flutter pub get
+          flutter-version: 'stable'
+      - name: Flutter version
+        run: flutter --version
+      - name: Pub get
         working-directory: apps/b2b_flutter
         run: flutter pub get
-      - name: Flutter analyze
-        working-directory: apps/b2b_flutter
-        run: flutter analyze
       - name: Flutter tests
         working-directory: apps/b2b_flutter
-        run: flutter test
+        run: flutter test --reporter=expanded
 
-  web:
-    name: Web PWA (apps/web_pwa)
+  flutter-static:
+    name: Flutter analyze & format check
     runs-on: ubuntu-latest
-    env:
-      LEGAL_PAGES_E2E: 0
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: apps/web_pwa/package-lock.json
-      - name: Install dependencies
-        working-directory: apps/web_pwa
-        run: npm ci
-      - name: Lint
-        working-directory: apps/web_pwa
-        run: npm run lint
-      - name: Tests
-        working-directory: apps/web_pwa
-        run: npm test
+          flutter-version: 'stable'
+      - run: flutter pub get
+      - name: dart format (check only)
+        run: dart format --set-exit-if-changed apps/b2b_flutter packages/dart/offline_toolkit
+      - name: flutter analyze
+        run: flutter analyze
 
-  edge:
-    name: Supabase Edge Functions
-    if: ${{ vars.RUN_EDGE_TESTS == '1' }}
-    continue-on-error: true
+  rls-setup-and-assert:
+    name: RLS setup + assertions on clean DB
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - name: Ensure RLS_TEST_DATABASE_URL secret configured
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::RLS_TEST_DATABASE_URL secret is missing"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Setup clean test DB schema + seed + policies + assertions
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/setup_test_db.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls_assertions.sql
+
+  rls-payments:
+    name: RLS payments events (admin-only + idempotency)
+    runs-on: ubuntu-latest
+    needs: [rls-setup-and-assert]
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - name: Ensure RLS_TEST_DATABASE_URL secret configured
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::RLS_TEST_DATABASE_URL secret is missing"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Run payment_events RLS tests
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/payment_events_rls_test.sql
+
+  rls-regressions:
+    name: Legacy RLS regressions
+    runs-on: ubuntu-latest
+    needs: [rls-setup-and-assert, rls-payments]
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - name: Ensure RLS_TEST_DATABASE_URL secret configured
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::RLS_TEST_DATABASE_URL secret is missing"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Run legacy RLS regressions
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/rls_regressions.sql
+      - name: Run order submit regression test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/orders_submit_test.sql
+      - name: Run pricing RLS test
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/pricing_rls_test.sql
+
+  price-import-effects:
+    runs-on: ubuntu-latest
+    needs: [rls-setup-and-assert]
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify price import effects
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/price_import_effects.sql
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gitleaks
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: detect --no-git -v
+
+  edge-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.46
-      - name: Run Deno tests
-        run: deno test supabase/functions
+      - name: Run price import unit tests
+        working-directory: supabase/functions
+        run: deno test price_lists_import/index.test.ts
+
+  deno-tests:
+    name: Deno Edge function tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: Run Deno tests (Edge functions)
+        env:
+          SUPABASE_URL: http://localhost
+          SUPABASE_SERVICE_ROLE_KEY: dummy
+        run: >
+          deno test
+          --allow-env=SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY
+          --allow-read=supabase/functions/price_lists_import
+          supabase/functions/price_lists_import

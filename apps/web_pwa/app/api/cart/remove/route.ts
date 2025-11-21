@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { ensureSessionId } from '@/lib/session';
 import { ensureCart, removeCartItem } from '@/lib/cart-db';
+import { assertLocalMode } from '@/lib/local-mode';
 
 export async function POST(request: Request) {
+  try {
+    assertLocalMode();
+  } catch (response) {
+    return response as Response;
+  }
+
   const body = await request.json();
   const itemId = body.item_id as string | undefined;
 

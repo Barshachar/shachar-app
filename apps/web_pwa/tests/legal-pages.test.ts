@@ -51,19 +51,27 @@ beforeAll(async () => {
         reject(new Error(`Next dev server exited early with code ${code}. Logs:\n${serverLogs}`));
       };
 
+      const server = devServer;
+      const stdout = server?.stdout;
+      if (!server || !stdout) {
+        clearTimeout(timeout);
+        reject(new Error(`Next dev server stdout not available. Logs:\n${serverLogs}`));
+        return;
+      }
+
       const onStdout = (chunk: Buffer) => {
         const text = chunk.toString();
         serverLogs += text;
         if (text.includes('ready - started server') || text.includes('Ready in')) {
           clearTimeout(timeout);
-          devServer?.stdout?.off('data', onStdout);
-          devServer?.off('exit', onExit);
+          stdout.off('data', onStdout);
+          server.off('exit', onExit);
           resolve();
         }
       };
 
-      devServer.stdout.on('data', onStdout);
-      devServer.once('exit', onExit);
+      stdout.on('data', onStdout);
+      server.once('exit', onExit);
     });
   } catch (error) {
     serverUnavailable = /operation not permitted/i.test(String(error));

@@ -22,7 +22,7 @@ DECLARE
 BEGIN
   select count(*) into unauthorized_count
     from orders
-   where customer_company_id <> auth_company_id();
+   where not order_has_vendor(id, auth_company_id());
   IF unauthorized_count > 0 THEN
     RAISE EXCEPTION
       'RLS violation: vendor company % can see % foreign orders',
@@ -57,7 +57,7 @@ END
 $$;
 
 reset role;
-reset session "request.jwt.claims";
+reset "request.jwt.claims";
 
 -- 2. Customer cannot access orders belonging to another customer tenant
 set local role authenticated;
@@ -106,7 +106,7 @@ END
 $$;
 
 reset role;
-reset session "request.jwt.claims";
+reset "request.jwt.claims";
 
 -- 3. Vendor cannot mutate price lists for another vendor tenant
 set local role authenticated;
@@ -142,7 +142,61 @@ END
 $$;
 
 reset role;
-reset session "request.jwt.claims";
+reset "request.jwt.claims";
+
+-- 4. Vendor cannot enumerate company_users outside its tenant
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "vendor_user",
+  "company_id": "20000000-0000-0000-0000-000000000000",
+  "sub": "22222222-2222-2222-2222-222222222222"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from company_users
+   where company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: vendor % enumerated % foreign company_users',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
+-- 5. Customer cannot read inventory rows for other vendors
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "customer_admin",
+  "company_id": "30000000-0000-0000-0000-000000000001",
+  "sub": "33333333-3333-3333-3333-333333333334"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from inventory i
+    join product_variants pv on pv.id = i.variant_id
+    join products p on p.id = pv.product_id
+   where p.vendor_company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: customer % saw % foreign inventory rows',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
 
 rollback;
 -- End of regression tests

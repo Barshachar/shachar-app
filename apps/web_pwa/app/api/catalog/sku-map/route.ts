@@ -1,22 +1,27 @@
 import { NextResponse } from 'next/server';
-import { shouldUseLocalData, getLocalProducts } from '@/lib/local-store';
+import { getLocalProducts } from '@/lib/local-store';
+import { assertLocalMode } from '@/lib/local-mode';
 
 export async function GET() {
+  try {
+    assertLocalMode();
+  } catch (response) {
+    return response as Response;
+  }
+
   const items: { sku: string; variant_id: string; name: string }[] = [];
 
-  if (shouldUseLocalData()) {
-    const products = await getLocalProducts();
-    for (const product of products) {
-      for (const variant of product.variants) {
-        if (!variant.sku) {
-          continue;
-        }
-        items.push({
-          sku: variant.sku,
-          variant_id: variant.id,
-          name: product.name
-        });
+  const products = await getLocalProducts();
+  for (const product of products) {
+    for (const variant of product.variants) {
+      if (!variant.sku) {
+        continue;
       }
+      items.push({
+        sku: variant.sku,
+        variant_id: variant.id,
+        name: product.name
+      });
     }
   }
 

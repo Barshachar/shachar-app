@@ -8,6 +8,7 @@
     "start": "next start -p ${PORT:-3003}",
     "serve:prod": "NODE_ENV=production PORT=${PORT:-3003} npm run start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "import:csv": "ts-node --compiler-options '{\"module\":\"commonjs\"}' ../../tools/snapshots/import-local-csv.ts",
@@ -15,6 +16,7 @@
     "snap:site": "ts-node --compiler-options '{\"module\":\"commonjs\"}' ../../tools/snapshots/snap-site.ts"
   },
   "dependencies": {
+    "@ashachar/contracts": "file:../../packages/contracts",
     "@pdf-lib/fontkit": "^1.1.1",
     "@supabase/supabase-js": "^2.42.0",
     "clsx": "^2.0.0",
@@ -39,5 +41,8 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4",
     "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20 <21"
   }
 }

@@ -1,12 +1,19 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { ADMIN_COOKIE, evaluateAdminAccess } from '@/lib/admin/access';
 
-const PROTECTED_PREFIX = '/admin';
+const ADMIN_PREFIX = '/admin';
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const isAdminApi = pathname.startsWith('/api/admin/');
+  const isAdminUI = pathname.startsWith(ADMIN_PREFIX);
+  const isLocal = process.env.APP_DATA_MODE === 'local';
 
-  if (!pathname.startsWith(PROTECTED_PREFIX)) {
+  if (!isLocal && !isAdminApi && !isAdminUI) {
+    return new NextResponse('PWA runs in local-only mode', { status: 503 });
+  }
+
+  if (!isAdminUI) {
     return NextResponse.next();
   }
 
@@ -38,5 +45,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
 };

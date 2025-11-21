@@ -1,3 +1,5 @@
+import type { ProductDto, ProductVariantDto, PriceQuote, OrderDto, OrderItemDto } from '@ashachar/contracts';
+
 export type Vendor = {
   id: string;
   name: string;
@@ -13,25 +15,34 @@ export type Category = {
   parent_id: string | null;
 };
 
-export type ProductVariant = {
-  id: string;
-  product_id: string;
+type ContractsProduct = Omit<ProductDto, 'vendorCompanyId' | 'categoryId' | 'uom' | 'active' | 'sku'>;
+type ContractsVariant = Omit<ProductVariantDto, 'productId' | 'uom' | 'active' | 'sku' | 'attributes'>;
+
+export type ProductVariant = ContractsVariant & {
+  productId?: string;
+  product_id?: string;
   name: string;
   sku: string | null;
+  uom?: string;
+  active?: boolean;
   price_cents: number;
   currency: string;
   barcode: string | null;
+  attributes?: Record<string, unknown>;
   variant_prices?: {
     price_group: string;
     price_cents: number;
   }[] | null;
 };
 
-export type Product = {
-  id: string;
+export type Product = ContractsProduct & {
+  vendorCompanyId?: string;
+  categoryId?: string | null;
+  uom?: string;
+  active?: boolean;
+  sku: string | null;
   name: string;
   slug: string;
-  sku: string | null;
   brand: string | null;
   vendor_slug: string;
   category_slug: string;
@@ -55,3 +66,5 @@ export type CartItem = {
     vendor_slug: string;
   };
 };
+
+export type { PriceQuote, OrderDto, OrderItemDto };

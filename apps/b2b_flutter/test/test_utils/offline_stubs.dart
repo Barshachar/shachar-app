@@ -1,8 +1,16 @@
-import 'package:offline_toolkit/offline_toolkit.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:offline_toolkit/offline_toolkit.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TestOfflineCacheManager extends OfflineCacheManager {
+  TestOfflineCacheManager()
+      : super(
+          deps: OTDeps(
+            logger: const OTNoopLogger(),
+            tenant: const StaticTenantResolver('test'),
+          ),
+        );
+
   final Map<String, Map<String, Map<String, dynamic>>> _store =
       <String, Map<String, Map<String, dynamic>>>{};
   String _tenant = 'anonymous';
@@ -42,7 +50,14 @@ class TestOfflineCacheManager extends OfflineCacheManager {
 class _MockSupabaseClient extends Mock implements SupabaseClient {}
 
 class TestOfflineQueue extends OfflineQueue {
-  TestOfflineQueue() : super(client: _stubClient);
+  TestOfflineQueue()
+      : super(
+          client: _stubClient,
+          deps: OTDeps(
+            logger: const OTNoopLogger(),
+            tenant: const StaticTenantResolver('test'),
+          ),
+        );
 
   static final _MockSupabaseClient _stubClient = _MockSupabaseClient();
 

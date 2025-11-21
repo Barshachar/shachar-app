@@ -1,10 +1,19 @@
-# Summary
-<!-- What/Why -->
+## תקציר
+מה משתנה ולמה.
 
-## Checklist
-- [ ] Tests (web) pass on CI
-- [ ] If needed, Flutter tests were run locally
-- [ ] No secrets added / lockfile updated if deps changed
+## סיכון / אינוואריאנטים
+- [ ] אין שימוש service-role בזרימות Buyer
+- [ ] RLS לא הוחלשה
+- [ ] סכומים/סטטוסים משתנים רק דרך RPC
 
-## Notes
-<!-- Risks, follow-ups -->
+## SQL/Edge
+קבצים/מיגרציות/השפעות, ו-Rollback.
+
+## בדיקות
+- יחידה:
+- אינטגרציה (SQL/Edge):
+- ידניות:
+
+## איך בדקתי מקומית
+פקודות/תרחישים.
+- `DATABASE_URL=postgres://user:pass@host:5432/db bash .ci/guard-typegen-ts.sh`

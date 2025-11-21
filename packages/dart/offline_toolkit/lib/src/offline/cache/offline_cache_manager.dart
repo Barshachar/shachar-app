@@ -2,15 +2,20 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:offline_toolkit/src/offline/deps.dart';
 import 'package:offline_toolkit/src/offline/hive_initializer.dart';
 
 final offlineCacheManagerProvider = Provider<OfflineCacheManager>((ref) {
-  return OfflineCacheManager();
+  final OTDeps deps = ref.watch(otDepsProvider);
+  return OfflineCacheManager(deps: deps);
 });
 
 class OfflineCacheManager {
+  OfflineCacheManager({required this.deps});
+
+  final OTDeps deps;
+
   bool _initialized = false;
   Box<dynamic>? _box;
   String _activeTenant = _anonymousTenant;
@@ -29,7 +34,7 @@ class OfflineCacheManager {
   }
 
   Future<void> setActiveTenant(String? tenantId) async {
-    final String normalized = _normalizeTenant(tenantId);
+    final String normalized = await _resolveTenant(tenantId);
     if (_activeTenant == normalized) {
       return;
     }
@@ -77,19 +82,21 @@ class OfflineCacheManager {
 
   String _tenantPrefix(String tenant) => '$tenant::';
 
-  String _normalizeTenant(String? tenantId) {
+  Future<String> _resolveTenant(String? tenantId) async {
     final String? trimmed = tenantId?.trim();
     if (trimmed != null && trimmed.isNotEmpty) {
       return trimmed;
     }
     try {
-      final Session? session = Supabase.instance.client.auth.currentSession;
-      final Object? companyRaw = session?.user.appMetadata['company_id'];
-      if (companyRaw is String && companyRaw.trim().isNotEmpty) {
-        return companyRaw.trim();
+      final String resolved = await deps.tenant.activeCompanyId();
+      if (resolved.trim().isNotEmpty) {
+        return resolved.trim();
       }
-    } catch (_) {
-      // Supabase may not be initialized yet.
+    } catch (error) {
+      deps.logger.warn(
+        'offline.cache.tenant_resolver_failed',
+        {'error': error.toString()},
+      );
     }
     return _anonymousTenant;
   }
@@ -97,4 +104,5 @@ class OfflineCacheManager {
 
 class MapCache {
   static const boxName = '_map_cache';
+  static const int cacheVersion = 1;
 }

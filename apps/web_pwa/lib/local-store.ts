@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { CartItem, Category, Product, ProductVariant, Vendor } from '@/lib/types';
+export { shouldUseLocalData } from './local-mode';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -21,10 +22,6 @@ async function readJson<T>(file: string, fallback: T): Promise<T> {
 async function writeJson<T>(file: string, data: T): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(path.join(DATA_DIR, file), JSON.stringify(data, null, 2), 'utf8');
-}
-
-export function shouldUseLocalData(): boolean {
-  return true;
 }
 
 export async function getLocalCategories(): Promise<Category[]> {
@@ -60,9 +57,13 @@ export async function getLocalProducts(): Promise<Product[]> {
   ]);
   const variantMap = new Map<string, ProductVariant[]>();
   for (const variant of variants) {
-    const bucket = variantMap.get(variant.product_id) ?? [];
+    const productId = variant.product_id ?? variant.productId;
+    if (!productId) {
+      continue;
+    }
+    const bucket = variantMap.get(productId) ?? [];
     bucket.push(variant);
-    variantMap.set(variant.product_id, bucket);
+    variantMap.set(productId, bucket);
   }
   return products.map((product, index) => ({
     ...product,

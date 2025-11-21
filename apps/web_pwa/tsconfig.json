@@ -16,6 +16,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "types": [
+      "vitest/globals"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/app/*": [
@@ -29,6 +32,9 @@
       ],
       "@/types/*": [
         "lib/types/*"
+      ],
+      "@ashachar/contracts": [
+        "../../packages/contracts/src/index.ts"
       ]
     },
     "incremental": true,

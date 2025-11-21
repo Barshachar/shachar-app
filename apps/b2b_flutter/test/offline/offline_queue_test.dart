@@ -42,7 +42,13 @@ void main() {
       return FunctionResponse(data: <String, dynamic>{}, status: 200);
     });
 
-    queue = OfflineQueue(client: client);
+    queue = OfflineQueue(
+      client: client,
+      deps: OTDeps(
+        logger: const OTNoopLogger(),
+        tenant: const StaticTenantResolver('tenant_a'),
+      ),
+    );
     await queue.initialize();
     await queue.setActiveTenant('tenant_a');
   });

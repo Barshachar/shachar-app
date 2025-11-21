@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:ashachar_marketplace/src/app/theme/theme.dart';
-import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:offline_toolkit/src/offline/queue/offline_queue_observers.dart';
 import 'package:offline_toolkit/src/offline/sync/sync_scheduler.dart';
 
@@ -26,13 +24,9 @@ class _OfflineSyncBannerState extends ConsumerState<OfflineSyncBanner> {
     try {
       await ref.read(syncSchedulerProvider).syncNow();
       if (!mounted) return;
+      final _OfflineBannerStrings strings = _resolveStrings(context, 0);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _localizedOrDefault('offlineBannerSyncStarted',
-                'מנסה לסנכרן את ההזמנות הממתינות...'),
-          ),
-        ),
+        SnackBar(content: Text(strings.toast)),
       );
     } finally {
       if (mounted) {
@@ -57,105 +51,132 @@ class _OfflineSyncBannerState extends ConsumerState<OfflineSyncBanner> {
   }
 
   Widget _buildBanner(BuildContext context, int count) {
-    final EdgeInsetsGeometry resolvedPadding = widget.padding ??
-        const EdgeInsetsDirectional.fromSTEB(
-          ASpacing.page,
-          ASpacing.sm,
-          ASpacing.page,
-          0,
-        );
-    final String title =
-        _localizedOrDefault('offlineBannerTitle', 'המערכת עובדת במצב אופליין');
-    final String messageTemplate = _localizedOrDefault(
-      'offlineBannerBody',
-      'יש {count} פעולות ממתינות לסנכרון. ניתן להמשיך לעבוד ורק לאחר חיבור הנתונים יתעדכנו.',
-    );
-    final String message = messageTemplate.replaceAll('{count}', '$count');
-    final String actionLabel = _localizedOrDefault(
-      _syncing ? 'offlineBannerSyncing' : 'offlineBannerSyncNow',
-      _syncing ? 'מסנכרן...' : 'סנכרן עכשיו',
-    );
+    final EdgeInsetsGeometry resolvedPadding =
+        widget.padding ?? const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0);
+    final _OfflineBannerStrings strings = _resolveStrings(context, count);
 
     return Padding(
       padding: resolvedPadding,
-      child: ACard(
-        backgroundColor: AColors.warning.withValues(alpha: 0.1),
-        borderRadius: ARadii.md,
-        padding: const EdgeInsetsDirectional.all(ASpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.sync_problem, color: AColors.warning),
-                const SizedBox(width: ASpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: ATypography.bodyMd.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AColors.warning,
+      child: Card(
+        color:
+            Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.3),
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.sync_problem,
+                      color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          strings.title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                      const SizedBox(height: ASpacing.xs),
-                      Text(
-                        message,
-                        style: ATypography.bodySm,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: ASpacing.sm),
-            Wrap(
-              spacing: ASpacing.sm,
-              runSpacing: ASpacing.xs,
-              alignment: WrapAlignment.start,
-              children: [
-                AButton.secondary(
-                  label: actionLabel,
-                  icon: Icon(_syncing ? Icons.autorenew : Icons.sync),
-                  loading: _syncing,
-                  onPressed: _syncing ? null : _handleSync,
-                ),
-                TextButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _localizedOrDefault(
-                          'offlineBannerInfo',
-                          'המערכת תשמור את ההזמנות ותסנכרן אותן כאשר החיבור יחזור.',
+                        const SizedBox(height: 4),
+                        Text(
+                          strings.body,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    _localizedOrDefault(
-                      'offlineBannerLearnMore',
-                      'איך זה עובד?',
-                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _syncing ? null : _handleSync,
+                    icon: _syncing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.sync),
+                    label: Text(_syncing ? strings.syncing : strings.syncNow),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  TextButton(
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(strings.info)),
+                    ),
+                    child: Text(strings.learnMore),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  String _localizedOrDefault(String key, String fallback) {
-    final MarketplaceLocalizations? l10n =
-        Localizations.of<MarketplaceLocalizations>(
-      context,
-      MarketplaceLocalizations,
-    );
-    final String value = l10n?.translate(key) ?? key;
-    return value == key ? fallback : value;
+  _OfflineBannerStrings _resolveStrings(BuildContext context, int count) {
+    final Locale locale =
+        Localizations.maybeLocaleOf(context) ?? const Locale('he');
+    if (locale.languageCode.toLowerCase() == 'he') {
+      return _OfflineBannerStrings.he(count);
+    }
+    return _OfflineBannerStrings.en(count);
   }
+}
+
+class _OfflineBannerStrings {
+  _OfflineBannerStrings({
+    required this.title,
+    required this.body,
+    required this.syncNow,
+    required this.syncing,
+    required this.learnMore,
+    required this.info,
+    required this.toast,
+  });
+
+  factory _OfflineBannerStrings.he(int count) {
+    return _OfflineBannerStrings(
+      title: 'המערכת עובדת במצב אופליין',
+      body:
+          'יש $count פעולות ממתינות לסנכרון. ניתן להמשיך לעבוד ורק לאחר חיבור הנתונים יתעדכנו.',
+      syncNow: 'סנכרן עכשיו',
+      syncing: 'מסנכרן...',
+      learnMore: 'איך זה עובד?',
+      info: 'המערכת תשמור את ההזמנות ותסנכרן אותן כאשר החיבור יחזור.',
+      toast: 'מנסה לסנכרן את ההזמנות הממתינות...',
+    );
+  }
+
+  factory _OfflineBannerStrings.en(int count) {
+    return _OfflineBannerStrings(
+      title: 'Working offline',
+      body:
+          'There are $count pending actions. You can keep working and we will sync them once connectivity returns.',
+      syncNow: 'Sync now',
+      syncing: 'Syncing...',
+      learnMore: 'How does it work?',
+      info:
+          'Your requests stay safe locally and will be synced automatically once a network connection is back.',
+      toast: 'Attempting to sync pending actions...',
+    );
+  }
+
+  final String title;
+  final String body;
+  final String syncNow;
+  final String syncing;
+  final String learnMore;
+  final String info;
+  final String toast;
 }

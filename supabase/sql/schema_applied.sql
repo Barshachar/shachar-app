@@ -5,6 +5,8 @@ create extension if not exists "uuid-ossp";
 create extension if not exists pgcrypto;
 create extension if not exists pg_trgm;
 create extension if not exists btree_gin;
+grant supabase_admin to postgres;
+grant supabase_storage_admin to supabase_admin;
 
 create type company_type as enum ('admin','vendor','customer');
 create type company_status as enum ('pending','active','suspended','rejected');
@@ -29,6 +31,7 @@ create table company_users (
     company_id uuid not null references companies(id) on delete cascade,
     user_id uuid not null references auth.users(id) on delete cascade,
     role user_role not null,
+    active boolean not null default true,
     created_at timestamptz not null default now(),
     primary key (company_id, user_id)
 );
@@ -51,6 +54,151 @@ select cu.user_id,
        cu.role
   from company_users cu
   join companies c on c.id = cu.company_id;
+
+create or replace function admin_list_company_users(p_company_id uuid default null)
+returns table (
+  user_id uuid,
+  email text,
+  full_name text,
+  role user_role,
+  company_id uuid,
+  company_name text,
+  company_type company_type,
+  invited_at timestamptz,
+  last_sign_in_at timestamptz,
+  banned_until timestamptz,
+  status text
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_company uuid := coalesce(p_company_id, auth_company_id());
+  v_role user_role := null;
+  v_claims jsonb := null;
+  v_is_service boolean := false;
+begin
+  begin
+    v_claims := current_setting('request.jwt.claims', true)::jsonb;
+    if v_claims ? 'role' and v_claims->>'role' = 'service_role' then
+      v_is_service := true;
+    end if;
+  exception
+    when others then null;
+  end;
+
+  if not v_is_service then
+    begin
+      v_role := auth_role();
+    exception
+      when others then v_role := null;
+    end;
+    if v_role is distinct from 'admin' then
+      raise exception 'admin_list_company_users requires admin role'
+        using errcode = '42501';
+    end if;
+  end if;
+
+  if v_company is null then
+    raise exception 'admin_list_company_users missing tenant scope'
+      using errcode = '22023';
+  end if;
+
+  return query
+    select cu.user_id,
+           u.email,
+           coalesce(u.raw_user_meta_data->>'full_name', '') as full_name,
+           cu.role,
+           cu.company_id,
+           c.name as company_name,
+           c.type as company_type,
+           cu.created_at as invited_at,
+           u.last_sign_in_at,
+           u.banned_until,
+           case
+             when cu.active is false then 'disabled'
+             when u.banned_until is not null and u.banned_until > now() then 'disabled'
+             else 'active'
+           end as status
+      from company_users cu
+      join auth.users u on u.id = cu.user_id
+      join companies c on c.id = cu.company_id
+     where cu.company_id = v_company
+     order by lower(u.email);
+end;
+$$;
+
+grant execute on function admin_list_company_users(uuid) to authenticated, service_role;
+
+create or replace function admin_set_user_role(
+  p_company_id uuid,
+  p_user_id uuid,
+  p_role user_role,
+  p_active boolean default true,
+  p_actor uuid default null,
+  p_reason text default null
+) returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_company uuid := coalesce(p_company_id, auth_company_id());
+  v_role user_role := null;
+  v_claims jsonb := null;
+  v_is_service boolean := false;
+  v_actor uuid := coalesce(p_actor, auth.uid());
+begin
+  begin
+    v_claims := current_setting('request.jwt.claims', true)::jsonb;
+    if v_claims ? 'role' and v_claims->>'role' = 'service_role' then
+      v_is_service := true;
+    end if;
+  exception
+    when others then null;
+  end;
+
+  if not v_is_service then
+    begin
+      v_role := auth_role();
+    exception
+      when others then v_role := null;
+    end;
+    if v_role is distinct from 'admin' then
+      raise exception 'admin_set_user_role requires admin role'
+        using errcode = '42501';
+    end if;
+  end if;
+
+  if v_company is null then
+    raise exception 'admin_set_user_role missing tenant scope'
+      using errcode = '22023';
+  end if;
+
+  insert into company_users(company_id, user_id, role, active)
+  values (v_company, p_user_id, p_role, coalesce(p_active, true))
+  on conflict(company_id, user_id) do update
+    set role = excluded.role,
+        active = excluded.active;
+
+  insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+  values (
+    v_actor,
+    'admin_set_user_role',
+    'company_users',
+    p_user_id,
+    jsonb_build_object(
+      'company_id', v_company,
+      'role', p_role,
+      'active', coalesce(p_active, true),
+      'reason', p_reason
+    )
+  );
+end;
+$$;
+
+grant execute on function admin_set_user_role(uuid, uuid, user_role, boolean, uuid, text) to service_role;
 
 create table categories (
     id uuid primary key default uuid_generate_v4(),

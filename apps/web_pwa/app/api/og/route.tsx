@@ -5,6 +5,7 @@ import {
   extractOgParams,
   renderOgTemplate
 } from '../../../../../packages/ts/web_ui/src/og/template';
+import { assertLocalMode } from '@/lib/local-mode';
 
 export const runtime = 'edge';
 
@@ -15,6 +16,12 @@ const DEFAULTS = {
 };
 
 export async function GET(request: Request) {
+  try {
+    assertLocalMode();
+  } catch (response) {
+    return response as Response;
+  }
+
   const url = new URL(request.url);
   const params = extractOgParams(url, DEFAULTS);
 

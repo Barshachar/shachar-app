@@ -43,6 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
         <PricingModeProvider>
+          <div className="bg-amber-500 text-white text-center text-sm font-semibold tracking-wide py-2">
+            Demo / Local Data Only
+          </div>
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />

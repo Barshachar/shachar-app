@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureSessionId } from '@/lib/session';
 import { fetchCartItems } from '@/lib/data';
 import { computeCartTotal, type PriceMode } from '@/lib/pricing';
+import { assertLocalMode } from '@/lib/local-mode';
 
 export async function GET(request: NextRequest) {
+  try {
+    assertLocalMode();
+  } catch (response) {
+    return response as Response;
+  }
+
   const sessionId = ensureSessionId();
   const items = await fetchCartItems(sessionId);
   const mode = (request.nextUrl.searchParams.get('price_mode') as PriceMode) || 'b2c';

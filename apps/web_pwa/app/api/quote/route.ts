@@ -8,7 +8,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import type { PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
-import { assertLocalMode } from '@/lib/admin/local-mode';
+import { assertLocalMode } from '@/lib/local-mode';
 import { computeTotals } from '@/lib/quote';
 import { wrapRtl } from '@/lib/pdf/rtl';
 import {

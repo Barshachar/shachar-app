@@ -7,7 +7,8 @@ export default defineConfig({
       '@': resolve(__dirname, '.'),
       '@/app': resolve(__dirname, 'app'),
       '@/components': resolve(__dirname, 'components'),
-      '@/lib': resolve(__dirname, 'lib')
+      '@/lib': resolve(__dirname, 'lib'),
+      '@ashachar/contracts': resolve(__dirname, '../../packages/contracts/src')
     }
   },
   server: {

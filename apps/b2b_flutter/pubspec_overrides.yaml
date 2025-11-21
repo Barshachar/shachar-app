@@ -1,0 +1,7 @@
+dependency_overrides:
+  riverpod:
+    hosted: https://pub.dev
+  flutter_riverpod:
+    hosted: https://pub.dev
+  hooks_riverpod:
+    hosted: https://pub.dev
