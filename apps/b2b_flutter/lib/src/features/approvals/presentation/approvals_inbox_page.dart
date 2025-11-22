@@ -90,11 +90,7 @@ class _ApprovalsInboxPageState extends ConsumerState<ApprovalsInboxPage> {
         ],
       ),
       body: inboxAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-            key: ValueKey('approvals_inbox_loading_spinner'),
-          ),
-        ),
+        loading: () => _buildSkeletons(context),
         error: (Object error, _) => _buildErrorState(context, l10n, error),
         data: (List<ApprovalRequest> requests) {
           if (requests.isEmpty) {
@@ -128,6 +124,20 @@ class _ApprovalsInboxPageState extends ConsumerState<ApprovalsInboxPage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSkeletons(BuildContext context) {
+    final EdgeInsets padding = context
+        .pagePadding()
+        .resolve(Directionality.of(context))
+        .copyWith(bottom: ASpacing.xxl);
+    return ListView.separated(
+      key: const ValueKey('approvals_inbox_skeleton_list'),
+      padding: padding,
+      itemBuilder: (_, __) => const _ApprovalSkeleton(),
+      separatorBuilder: (_, __) => const SizedBox(height: ASpacing.lg),
+      itemCount: 4,
     );
   }
 
@@ -347,6 +357,43 @@ class _ApprovalsInboxPageState extends ConsumerState<ApprovalsInboxPage> {
       return null;
     }
     return parts.join(' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+}
+
+class _ApprovalSkeleton extends StatelessWidget {
+  const _ApprovalSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: ARadii.lg),
+      child: Padding(
+        padding: const EdgeInsets.all(ASpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            ASkeleton(width: 180, height: 18),
+            SizedBox(height: ASpacing.sm),
+            ASkeleton(width: 140, height: 14),
+            SizedBox(height: ASpacing.sm),
+            ASkeleton(width: double.infinity, height: 12),
+            SizedBox(height: ASpacing.xs),
+            ASkeleton(width: double.infinity, height: 12),
+            SizedBox(height: ASpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                    child: ASkeleton(height: 40, borderRadius: ARadii.pill)),
+                SizedBox(width: ASpacing.md),
+                Expanded(
+                    child: ASkeleton(height: 40, borderRadius: ARadii.pill)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

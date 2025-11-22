@@ -71,57 +71,57 @@ class ApprovalRequest {
 final approvalsInboxProvider =
     FutureProvider.autoDispose<List<ApprovalRequest>>((ref) async {
   final SupabaseClient client = Supabase.instance.client;
-
+  final Stopwatch stopwatch = Stopwatch()..start();
   try {
     final dynamic response =
         await client.rpc<dynamic>('rpc_approvals_inbox').timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        throw TimeoutException('Request timed out after 10 seconds');
-      },
-    );
-    if (response is List) {
-      return response
-          .whereType<Map<String, dynamic>>()
-          .map(ApprovalRequest.fromMap)
-          .toList();
-    }
-    if (response is Map && response['data'] is List) {
-      final List<dynamic> data = response['data'] as List<dynamic>;
-      return data
-          .whereType<Map<String, dynamic>>()
-          .map(ApprovalRequest.fromMap)
-          .toList();
-    }
+              const Duration(seconds: 8),
+              onTimeout: () =>
+                  throw TimeoutException('Approvals request timed out'),
+            );
+    return _parseApprovalsResponse(response);
   } on PostgrestException catch (error) {
-    // Fall back to direct select if RPC is unavailable.
     if (!_isUndefinedFunction(error)) {
       rethrow;
     }
+  } finally {
+    stopwatch.stop();
+    _recordInboxTelemetry(stopwatch.elapsed, success: true);
   }
 
-  final dynamic fallback = await Supabase.instance.client
+  final dynamic fallback = await client
       .from('order_approvals_inbox')
       .select()
-      .order('requested_at', ascending: false);
+      .order('requested_at', ascending: false)
+      .timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => throw TimeoutException('Approvals request timed out'),
+      );
 
-  if (fallback is List) {
-    return fallback
+  return _parseApprovalsResponse(fallback);
+});
+
+List<ApprovalRequest> _parseApprovalsResponse(dynamic payload) {
+  if (payload is List) {
+    return payload
         .whereType<Map<String, dynamic>>()
         .map(ApprovalRequest.fromMap)
         .toList();
   }
-
-  if (fallback is Map && fallback['data'] is List) {
-    final List<dynamic> data = fallback['data'] as List<dynamic>;
+  if (payload is Map && payload['data'] is List) {
+    final List<dynamic> data = payload['data'] as List<dynamic>;
     return data
         .whereType<Map<String, dynamic>>()
         .map(ApprovalRequest.fromMap)
         .toList();
   }
-
   throw StateError('Approvals inbox returned unexpected response');
-});
+}
+
+void _recordInboxTelemetry(Duration elapsed, {required bool success}) {
+  // Simple hook to add logging/analytics later without breaking call sites.
+  // Intentionally no-op; instrumentation can be injected here.
+}
 
 bool _isUndefinedFunction(PostgrestException error) {
   final String message = error.message.toLowerCase();

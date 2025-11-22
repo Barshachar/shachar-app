@@ -3,6 +3,7 @@ import 'package:ashachar_marketplace/src/auth/session_provider.dart';
 import 'package:ashachar_marketplace/src/core/config/app_config.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/core/logger/app_logger.dart';
+import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_provider.dart';
 import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
 import 'package:ashachar_marketplace/src/features/catalog/domain/catalog_models.dart';
 import 'package:ashachar_marketplace/src/features/catalog/domain/paged_products.dart';
@@ -169,6 +170,32 @@ void main() {
         _FakeOrdersRepository(lines);
     final _FakeCatalogRepository fakeCatalogRepository =
         _FakeCatalogRepository();
+    final List<ApprovalRequest> approvals = <ApprovalRequest>[
+      ApprovalRequest(
+        stepId: 'step-1',
+        orderId: 'order-approval-1',
+        orderNumber: 'AP-1001',
+        total: 150,
+        currency: '₪',
+        requestedAt: DateTime(2024, 9, 1),
+        status: 'pending',
+        requestedBy: 'buyer1',
+        buyerName: 'SuperMart',
+        note: null,
+      ),
+      ApprovalRequest(
+        stepId: 'step-2',
+        orderId: 'order-approval-2',
+        orderNumber: 'AP-1002',
+        total: 200,
+        currency: '₪',
+        requestedAt: DateTime(2024, 9, 2),
+        status: 'pending',
+        requestedBy: 'buyer2',
+        buyerName: 'SuperMart',
+        note: null,
+      ),
+    ];
 
     await tester.pumpWidget(
       ProviderScope(
@@ -192,6 +219,7 @@ void main() {
                 ref, fakeOrdersRepository, fakeCatalogRepository),
           ),
           cartLinesProvider.overrideWith((ref, orderId) async => lines),
+          approvalsInboxProvider.overrideWith((ref) async => approvals),
           sessionControllerProvider.overrideWith(
             (ref) => FakeSessionController(_stubSession()),
           ),
@@ -228,6 +256,13 @@ void main() {
         findsOneWidget);
     expect(
         find.byKey(const ValueKey('home_view_all_orders_btn')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home_menu_approvals')),
+        matching: find.text('2'),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('home_menu_catalog')), findsWidgets);
     expect(find.byKey(const ValueKey('home_menu_promotions')), findsOneWidget);
     expect(find.byKey(const ValueKey('home_menu_orders')), findsOneWidget);

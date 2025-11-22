@@ -12,11 +12,12 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('approvals inbox surfaces loading, empty, and error states',
       (WidgetTester tester) async {
-    // Loading state: pending future keeps spinner visible.
+    // Loading state: pending future keeps skeletons visible.
     final Completer<List<ApprovalRequest>> pending =
         Completer<List<ApprovalRequest>>();
     await tester.pumpWidget(
       ProviderScope(
+        key: UniqueKey(),
         overrides: [
           approvalsInboxProvider.overrideWith((ref) => pending.future),
         ],
@@ -25,7 +26,7 @@ void main() {
     );
     await tester.pump();
     expect(
-      find.byKey(const ValueKey('approvals_inbox_loading_spinner')),
+      find.byKey(const ValueKey('approvals_inbox_skeleton_list')),
       findsOneWidget,
     );
 
@@ -36,9 +37,11 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        key: UniqueKey(),
         overrides: [
-          approvalsInboxProvider
-              .overrideWith((ref) async => const <ApprovalRequest>[]),
+          approvalsInboxProvider.overrideWith(
+            (ref) async => const <ApprovalRequest>[],
+          ),
         ],
         child: const _ApprovalsInboxHarness(),
       ),
@@ -56,13 +59,14 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        key: UniqueKey(),
         overrides: [
-          approvalsInboxProvider.overrideWith((ref) async {
-            Error.throwWithStackTrace(
+          approvalsInboxProvider.overrideWithValue(
+            AsyncError<List<ApprovalRequest>>(
               Exception('failed to load approvals'),
               StackTrace.current,
-            );
-          }),
+            ),
+          ),
         ],
         child: const _ApprovalsInboxHarness(),
       ),

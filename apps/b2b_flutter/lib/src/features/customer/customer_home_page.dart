@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
+import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_provider.dart';
 import 'package:ashachar_marketplace/src/auth/debug_auth_sheet.dart';
 import 'package:ashachar_marketplace/src/auth/session_provider.dart';
 import 'package:ashachar_marketplace/src/core/config/app_config.dart';
@@ -78,6 +79,8 @@ class CustomerHomePage extends ConsumerWidget {
         l10n?.translate('homeSavedListsShortcut') ?? 'רשימות שמורות';
     final String viewAllOrdersLabel =
         l10n?.translate('homeViewAllOrders') ?? 'כל ההזמנות';
+    final int pendingApprovals =
+        ref.watch(approvalsInboxProvider).asData?.value.length ?? 0;
 
     final List<_HomeShortcutConfig> shortcuts = <_HomeShortcutConfig>[
       _HomeShortcutConfig(
@@ -126,6 +129,7 @@ class CustomerHomePage extends ConsumerWidget {
         label: l10n?.translate('homeTileApprovals') ?? 'אישורים',
         description: l10n?.translate('homeTileApprovalsDescription') ??
             'בקשות ממתינות לאישור',
+        badgeCount: pendingApprovals,
         onTap: () => context.go('/customer/approvals'),
       ),
     ];
@@ -746,13 +750,39 @@ class _HomeShortcutTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: AColors.primaryMuted,
-                borderRadius: ARadii.sm,
-              ),
-              padding: const EdgeInsets.all(ASpacing.sm),
-              child: Icon(config.icon, color: AColors.primaryDark, size: 22),
+            Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AColors.primaryMuted,
+                    borderRadius: ARadii.sm,
+                  ),
+                  padding: const EdgeInsets.all(ASpacing.sm),
+                  child:
+                      Icon(config.icon, color: AColors.primaryDark, size: 22),
+                ),
+                if (config.badgeCount != null && config.badgeCount! > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: ARadii.pill,
+                      ),
+                      child: Text(
+                        config.badgeCount! > 99
+                            ? '99+'
+                            : config.badgeCount!.toString(),
+                        style: ATypography.chip.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: ASpacing.md),
             Text(
@@ -782,6 +812,7 @@ class _HomeShortcutConfig {
     required this.label,
     required this.description,
     required this.onTap,
+    this.badgeCount,
   });
 
   final String keyValue;
@@ -789,6 +820,7 @@ class _HomeShortcutConfig {
   final String label;
   final String description;
   final VoidCallback onTap;
+  final int? badgeCount;
 }
 
 class _HomePlaceholderDrawer extends StatelessWidget {
