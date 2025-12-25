@@ -545,6 +545,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           created_by: string
           currency: string
@@ -560,6 +563,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by: string
           currency?: string
@@ -575,6 +581,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           created_by?: string
           currency?: string
@@ -590,6 +599,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_created_by_fkey"
             columns: ["created_by"]
@@ -973,29 +989,54 @@ export type Database = {
       returns: {
         Row: {
           created_at: string
+          created_by: string
           id: string
           item_id: string
           order_id: string
           qty: number
           reason: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["return_status"]
+          updated_at: string
         }
         Insert: {
           created_at?: string
+          created_by: string
           id?: string
           item_id: string
           order_id: string
           qty: number
           reason?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["return_status"]
+          updated_at?: string
         }
         Update: {
           created_at?: string
+          created_by?: string
           id?: string
           item_id?: string
           order_id?: string
           qty?: number
           reason?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["return_status"]
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "returns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "returns_item_id_fkey"
             columns: ["item_id"]
@@ -1016,6 +1057,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_vendor_orders"
             referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "returns_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1386,6 +1434,78 @@ export type Database = {
           },
         ]
       }
+      vendor_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string
+          customer_company_id: string
+          id: string
+          order_id: string
+          rating: number
+          updated_at: string
+          vendor_company_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by: string
+          customer_company_id: string
+          id?: string
+          order_id: string
+          rating: number
+          updated_at?: string
+          vendor_company_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string
+          customer_company_id?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          updated_at?: string
+          vendor_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_ratings_customer_company_id_fkey"
+            columns: ["customer_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_vendor_orders"
+            referencedColumns: ["order_id"]
+          },
+          {
+            foreignKeyName: "vendor_ratings_vendor_company_id_fkey"
+            columns: ["vendor_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warehouse_bins: {
         Row: {
           aisle: string
@@ -1529,6 +1649,21 @@ export type Database = {
           },
         ]
       }
+      order_approvals_inbox: {
+        Row: {
+          buyer_name: string | null
+          currency: string | null
+          note: string | null
+          order_id: string | null
+          order_number: string | null
+          requested_at: string | null
+          requested_by: string | null
+          status: string | null
+          step_id: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
       secure_effective_prices: {
         Row: {
           currency: string | null
@@ -1623,6 +1758,23 @@ export type Database = {
           },
         ]
       }
+      vendor_rating_summary: {
+        Row: {
+          average_rating: number | null
+          last_rating_at: string | null
+          ratings_count: number | null
+          vendor_company_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_ratings_vendor_company_id_fkey"
+            columns: ["vendor_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_list_company_users: {
@@ -1673,6 +1825,30 @@ export type Database = {
         Returns: boolean
       }
       refresh_mv_effective_prices: { Args: never; Returns: undefined }
+      rpc_approvals_inbox: {
+        Args: never
+        Returns: {
+          buyer_name: string
+          currency: string
+          note: string
+          order_id: string
+          order_number: string
+          requested_at: string
+          requested_by: string
+          status: string
+          step_id: string
+          total: number
+        }[]
+      }
+      rpc_approve_step: {
+        Args: {
+          p_decision: string
+          p_note: string
+          p_order_id: string
+          p_step_id: string
+        }
+        Returns: Json
+      }
       rpc_company_catalog: {
         Args: { p_company: string }
         Returns: {
@@ -1702,6 +1878,7 @@ export type Database = {
           vendor_id: string
         }[]
       }
+      rpc_evaluate_approvals: { Args: { p_order_id: string }; Returns: Json }
       rpc_resolve_price: {
         Args: { p_company: string; p_qty: number; p_variant: string }
         Returns: {
@@ -1738,6 +1915,12 @@ export type Database = {
         | "due_on_receipt"
         | "two_ten_net_30"
       price_list_scope: "global" | "customer"
+      return_status:
+        | "requested"
+        | "approved"
+        | "rejected"
+        | "received"
+        | "refunded"
       shipment_status:
         | "pending"
         | "ready"
@@ -1900,6 +2083,13 @@ export const Constants = {
         "two_ten_net_30",
       ],
       price_list_scope: ["global", "customer"],
+      return_status: [
+        "requested",
+        "approved",
+        "rejected",
+        "received",
+        "refunded",
+      ],
       shipment_status: [
         "pending",
         "ready",

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/localization/generated/app_localizations.dart';
 
 @immutable
 class SavedListOverview {
@@ -34,13 +35,20 @@ class SavedListsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final MarketplaceLocalizations? l10n =
+    final MarketplaceLocalizations? legacyL10n =
         Localizations.of<MarketplaceLocalizations>(
       context,
       MarketplaceLocalizations,
     );
+    final AppLocalizations? l10n =
+        Localizations.of<AppLocalizations>(context, AppLocalizations);
     final AsyncValue<List<SavedListOverview>> savedListsAsync =
         ref.watch(savedListsControllerProvider);
+    final String title = l10n?.savedListsTitle ??
+        legacyL10n?.translate('savedListsTitle') ??
+        'Saved Lists';
+    final String newListLabel =
+        l10n?.newList ?? legacyL10n?.translate('newList') ?? 'New List';
 
     return Scaffold(
       key: const ValueKey('saved_list_root'),
@@ -49,7 +57,7 @@ class SavedListsPage extends ConsumerWidget {
         backgroundColor: _background,
         elevation: 0,
         title: Text(
-          l10n?.translate('savedListsTitle') ?? 'Saved Lists',
+          title,
           style: ATypography.titleMd.copyWith(color: Colors.white),
         ),
         actions: const [
@@ -70,14 +78,20 @@ class SavedListsPage extends ConsumerWidget {
         error: (Object error, _) => _SavedListsError(
           message: error.toString(),
           l10n: l10n,
+          legacyL10n: legacyL10n,
           onRetry: () => ref.invalidate(savedListsControllerProvider),
           background: _background,
         ),
         data: (List<SavedListOverview> lists) => lists.isEmpty
-            ? _SavedListsEmpty(l10n: l10n, background: _background)
+            ? _SavedListsEmpty(
+                l10n: l10n,
+                legacyL10n: legacyL10n,
+                background: _background,
+              )
             : _SavedListsContent(
                 lists: lists,
                 l10n: l10n,
+                legacyL10n: legacyL10n,
                 background: _background,
                 cardColor: _cardColor,
               ),
@@ -86,7 +100,7 @@ class SavedListsPage extends ConsumerWidget {
         onPressed: () {},
         backgroundColor: AColors.primary,
         foregroundColor: Colors.white,
-        label: Text(l10n?.translate('newList') ?? 'New List'),
+        label: Text(newListLabel),
         icon: const Icon(Icons.add),
       ),
     );
@@ -111,16 +125,23 @@ class _SavedListsLoading extends StatelessWidget {
 }
 
 class _SavedListsEmpty extends StatelessWidget {
-  const _SavedListsEmpty({required this.l10n, required this.background});
+  const _SavedListsEmpty({
+    required this.l10n,
+    required this.legacyL10n,
+    required this.background,
+  });
 
-  final MarketplaceLocalizations? l10n;
+  final AppLocalizations? l10n;
+  final MarketplaceLocalizations? legacyL10n;
   final Color background;
 
   @override
   Widget build(BuildContext context) {
-    final String title =
-        l10n?.translate('savedListsEmptyTitle') ?? 'No saved lists yet';
-    final String message = l10n?.translate('savedListsEmptyMessage') ??
+    final String title = l10n?.savedListsEmptyTitle ??
+        legacyL10n?.translate('savedListsEmptyTitle') ??
+        'No saved lists yet';
+    final String message = l10n?.savedListsEmptyMessage ??
+        legacyL10n?.translate('savedListsEmptyMessage') ??
         'Create lists to quickly add repeat items.';
     return Container(
       key: const ValueKey('saved_lists_empty_state'),
@@ -152,20 +173,25 @@ class _SavedListsError extends StatelessWidget {
   const _SavedListsError({
     required this.message,
     required this.l10n,
+    required this.legacyL10n,
     required this.onRetry,
     required this.background,
   });
 
   final String message;
-  final MarketplaceLocalizations? l10n;
+  final AppLocalizations? l10n;
+  final MarketplaceLocalizations? legacyL10n;
   final VoidCallback onRetry;
   final Color background;
 
   @override
   Widget build(BuildContext context) {
-    final String title =
-        l10n?.translate('savedListsErrorTitle') ?? 'Saved lists unavailable';
-    final String retryLabel = l10n?.translate('ordersRetry') ?? 'Try again';
+    final String title = l10n?.savedListsErrorTitle ??
+        legacyL10n?.translate('savedListsErrorTitle') ??
+        'Saved lists unavailable';
+    final String retryLabel = l10n?.ordersRetry ??
+        legacyL10n?.translate('ordersRetry') ??
+        'Try again';
     return Container(
       key: const ValueKey('saved_lists_error_state'),
       color: background,
@@ -205,12 +231,14 @@ class _SavedListsContent extends StatelessWidget {
   const _SavedListsContent({
     required this.lists,
     required this.l10n,
+    required this.legacyL10n,
     required this.background,
     required this.cardColor,
   });
 
   final List<SavedListOverview> lists;
-  final MarketplaceLocalizations? l10n;
+  final AppLocalizations? l10n;
+  final MarketplaceLocalizations? legacyL10n;
   final Color background;
   final Color cardColor;
 
@@ -225,14 +253,8 @@ class _SavedListsContent extends StatelessWidget {
         intl.DateFormat.yMMMd(localeName).add_Hm();
     final TextDirection textDirection = Directionality.of(context);
     final EdgeInsetsGeometry padding = context.pagePadding();
-    final String addAllLabel = l10n?.translate('addAll') ?? 'Add all';
-    final String itemsCountTemplate =
-        l10n?.translate('itemsCount') ?? '{count} items';
-    final String lastUpdatedTemplate =
-        l10n?.translate('lastUpdated') ?? 'Last updated {timestamp}';
-    final String snackbarTemplate =
-        l10n?.translate('savedListsAddAllSuccess') ??
-            'Added all {itemCount} items from "{listName}"';
+    final String addAllLabel =
+        l10n?.addAll ?? legacyL10n?.translate('addAll') ?? 'Add all';
 
     return Container(
       color: background,
@@ -242,12 +264,31 @@ class _SavedListsContent extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(height: ASpacing.lg),
         itemBuilder: (BuildContext context, int index) {
           final SavedListOverview list = lists[index];
-          final String itemsCountLabel = itemsCountTemplate.replaceAll(
-              '{count}', list.itemCount.toString());
+          final String? legacyItemsCount = legacyL10n?.translate('itemsCount');
+          final String itemsCountLabel = l10n?.itemsCount(list.itemCount) ??
+              (legacyItemsCount != null
+                  ? legacyItemsCount.replaceAll(
+                      '{count}',
+                      list.itemCount.toString(),
+                    )
+                  : '${list.itemCount} items');
           final String formattedDate =
               dateFormat.format(list.lastUpdated.toLocal());
-          final String lastUpdatedLabel =
-              lastUpdatedTemplate.replaceAll('{timestamp}', formattedDate);
+          final String? legacyLastUpdated =
+              legacyL10n?.translate('lastUpdated');
+          final String lastUpdatedLabel = l10n?.lastUpdated(formattedDate) ??
+              (legacyLastUpdated != null
+                  ? legacyLastUpdated.replaceAll('{timestamp}', formattedDate)
+                  : 'Last updated $formattedDate');
+          final String snackbarTemplate = l10n?.savedListsAddAllSuccess(
+                list.itemCount,
+                list.name,
+              ) ??
+              _legacySavedListSuccess(
+                legacyL10n?.translate('savedListsAddAllSuccess'),
+                list,
+              ) ??
+              'Added all ${list.itemCount} items from "${list.name}"';
 
           return Container(
             key: ValueKey<String>('saved_list_card_${list.id}'),
@@ -304,10 +345,7 @@ class _SavedListsContent extends StatelessWidget {
                         key: ValueKey<String>(
                             'saved_list_add_all_btn_${list.id}'),
                         onPressed: () {
-                          final String message = snackbarTemplate
-                              .replaceAll(
-                                  '{itemCount}', list.itemCount.toString())
-                              .replaceAll('{listName}', list.name);
+                          final String message = snackbarTemplate;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               key: const ValueKey(
@@ -340,4 +378,16 @@ class _SavedListsContent extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _legacySavedListSuccess(
+  String? template,
+  SavedListOverview list,
+) {
+  if (template == null) {
+    return null;
+  }
+  return template
+      .replaceAll('{itemCount}', list.itemCount.toString())
+      .replaceAll('{listName}', list.name);
 }

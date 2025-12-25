@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/onboarding/onboarding_service.dart';
+import 'package:ashachar_marketplace/src/features/support/presentation/support_ai_chat_page.dart';
 
 class HelpPage extends StatefulWidget {
   const HelpPage({super.key});
@@ -140,8 +141,10 @@ class _HelpPageState extends State<HelpPage> {
                     icon: Icons.chat_outlined,
                     title: 'צ\'אט',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('צ\'אט - בקרוב')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const SupportAiChatPage(),
+                        ),
                       );
                     },
                   ),

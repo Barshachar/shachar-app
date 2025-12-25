@@ -59,6 +59,115 @@ $$;
 reset role;
 reset "request.jwt.claims";
 
+-- 6. Customer cannot read ratings from other customers
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "buyer",
+  "company_id": "30000000-0000-0000-0000-000000000000",
+  "sub": "33333333-3333-3333-3333-333333333333"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from vendor_ratings
+   where customer_company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: customer % saw % foreign vendor ratings',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO vendor_ratings (
+      vendor_company_id,
+      customer_company_id,
+      order_id,
+      rating,
+      comment,
+      created_by
+    )
+    VALUES (
+      '20000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000000',
+      'A0000000-0000-0000-0000-000000000001',
+      5,
+      'cross tenant probe',
+      auth.uid()
+    );
+
+    RAISE EXCEPTION
+      'RLS violation: customer % inserted rating for foreign order',
+      auth_company_id();
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
+-- 7. Vendor cannot submit ratings
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "vendor_admin",
+  "company_id": "20000000-0000-0000-0000-000000000000",
+  "sub": "22222222-2222-2222-2222-222222222222"
+}';
+
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO vendor_ratings (
+      vendor_company_id,
+      customer_company_id,
+      order_id,
+      rating,
+      comment,
+      created_by
+    )
+    VALUES (
+      '20000000-0000-0000-0000-000000000000',
+      '30000000-0000-0000-0000-000000000000',
+      'A0000000-0000-0000-0000-000000000000',
+      4,
+      'vendor attempt',
+      auth.uid()
+    );
+
+    RAISE EXCEPTION
+      'RLS violation: vendor % inserted rating',
+      auth_company_id();
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
 -- 2. Customer cannot access orders belonging to another customer tenant
 set local role authenticated;
 set session "request.jwt.claims" = '{
@@ -92,6 +201,34 @@ BEGIN
     RAISE EXCEPTION
       'RLS violation: customer % inserted order for foreign tenant',
       auth_company_id();
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL; -- expected failure
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
+END
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    UPDATE orders
+       SET status = 'cancelled',
+           cancellation_reason = 'rls_probe',
+           cancelled_at = now(),
+           cancelled_by = auth.uid()
+     WHERE id = 'A0000000-0000-0000-0000-000000000001';
+
+    IF FOUND THEN
+      RAISE EXCEPTION
+        'RLS violation: customer % cancelled foreign order',
+        auth_company_id();
+    END IF;
   EXCEPTION
     WHEN insufficient_privilege THEN
       NULL; -- expected failure
@@ -192,6 +329,147 @@ BEGIN
       'RLS violation: customer % saw % foreign inventory rows',
       auth_company_id(), leak_count;
   END IF;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
+-- 8. Customer cannot read returns from other customers
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "buyer",
+  "company_id": "30000000-0000-0000-0000-000000000000",
+  "sub": "33333333-3333-3333-3333-333333333333"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from returns r
+    join orders o on o.id = r.order_id
+   where o.customer_company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: customer % saw % foreign returns',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
+-- 9. Vendor cannot read returns for other vendors
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "vendor_admin",
+  "company_id": "20000000-0000-0000-0000-000000000000",
+  "sub": "22222222-2222-2222-2222-222222222222"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from returns r
+    join order_items oi on oi.id = r.item_id
+   where oi.vendor_company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: vendor % saw % foreign returns',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO returns (
+      order_id,
+      item_id,
+      reason,
+      qty,
+      status,
+      created_by
+    )
+    VALUES (
+      'A0000000-0000-0000-0000-000000000000',
+      'B0000000-0000-0000-0000-000000000000',
+      'vendor attempt',
+      1,
+      'requested',
+      auth.uid()
+    );
+
+    RAISE EXCEPTION
+      'RLS violation: vendor % inserted return',
+      auth_company_id();
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
+END
+$$;
+
+reset role;
+reset "request.jwt.claims";
+
+-- 10. Customer cannot read approval requests from other tenants
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "customer_admin",
+  "company_id": "30000000-0000-0000-0000-000000000001",
+  "sub": "33333333-3333-3333-3333-333333333334"
+}';
+
+DO $$
+DECLARE
+  leak_count integer;
+BEGIN
+  select count(*) into leak_count
+    from approval_requests
+   where company_id <> auth_company_id();
+  IF leak_count > 0 THEN
+    RAISE EXCEPTION
+      'RLS violation: customer % saw % foreign approval requests',
+      auth_company_id(), leak_count;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    UPDATE approval_requests
+       SET status = 'approved'
+     WHERE id = 'AA000000-0000-0000-0000-000000000000';
+
+    IF FOUND THEN
+      RAISE EXCEPTION
+        'RLS violation: customer % updated foreign approval request',
+        auth_company_id();
+    END IF;
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
 END
 $$;
 

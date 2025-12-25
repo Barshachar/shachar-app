@@ -4,6 +4,7 @@ truncate table notifications cascade;
 truncate table attachments cascade;
 truncate table payment_events cascade;
 truncate table shipments cascade;
+truncate table vendor_ratings cascade;
 truncate table order_items cascade;
 truncate table orders cascade;
 truncate table prices cascade;
@@ -304,6 +305,80 @@ insert into shipments (id, order_id, vendor_company_id, status, tracking, partia
 values
   ('C0000000-0000-0000-0000-000000000000', 'A0000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000000', 'in_transit', 'SM-TRACK-1001', false),
   ('C0000000-0000-0000-0000-000000000001', 'A0000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000001', 'ready', 'PK-TRACK-2033', true);
+
+insert into approval_requests (
+  id,
+  requester_user_id,
+  approver_user_id,
+  company_id,
+  request_type,
+  entity_type,
+  entity_id,
+  status,
+  notes,
+  created_at,
+  updated_at
+)
+values (
+  'AA000000-0000-0000-0000-000000000000',
+  '33333333-3333-3333-3333-333333333333',
+  '44444444-4444-4444-4444-444444444444',
+  '30000000-0000-0000-0000-000000000000',
+  'order_approval',
+  'order',
+  'A0000000-0000-0000-0000-000000000000',
+  'pending',
+  'Initial approval request.',
+  now() - interval '2 days',
+  now() - interval '2 days'
+);
+
+-- Second order for Cafe Delights
+insert into orders (id, customer_company_id, created_by, status, currency, created_at)
+values ('A0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333334', 'delivered', 'ILS', now() - interval '10 days');
+
+insert into order_items (id, order_id, vendor_company_id, variant_id, qty, uom, unit_price, discount_pct, tax_rate)
+values
+  ('B0000000-0000-0000-0000-000000000002', 'A0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000003', 18, 'EA', 8.40, 0, 17.00);
+
+update orders set
+  subtotal = (8.40 * 18),
+  tax_total = (8.40 * 18) * 0.17,
+  total = subtotal + tax_total
+where id = 'A0000000-0000-0000-0000-000000000001';
+
+insert into shipments (id, order_id, vendor_company_id, status, tracking, partial_flag, created_at)
+values
+  ('C0000000-0000-0000-0000-000000000002', 'A0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'delivered', 'PK-TRACK-3002', false, now() - interval '9 days');
+
+insert into vendor_ratings (id, vendor_company_id, customer_company_id, order_id, rating, comment, created_by, created_at)
+values
+  ('F0000000-0000-0000-0000-000000000000', '20000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-000000000000', 'A0000000-0000-0000-0000-000000000000', 5, 'Consistent quality and quick delivery.', '33333333-3333-3333-3333-333333333333', now() - interval '2 days'),
+  ('F0000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000000', 'A0000000-0000-0000-0000-000000000000', 4, 'Great response times.', '33333333-3333-3333-3333-333333333333', now() - interval '1 day'),
+  ('F0000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'A0000000-0000-0000-0000-000000000001', 5, 'Packaging was excellent.', '33333333-3333-3333-3333-333333333334', now() - interval '7 days');
+
+insert into returns (
+  id,
+  order_id,
+  item_id,
+  reason,
+  qty,
+  status,
+  created_by,
+  created_at,
+  updated_at
+)
+values (
+  'F1000000-0000-0000-0000-000000000000',
+  'A0000000-0000-0000-0000-000000000001',
+  'B0000000-0000-0000-0000-000000000002',
+  'Damaged packaging on delivery.',
+  2,
+  'requested',
+  '33333333-3333-3333-3333-333333333334',
+  now() - interval '5 days',
+  now() - interval '5 days'
+);
 
 insert into notifications (id, user_id, title, body, data)
 values

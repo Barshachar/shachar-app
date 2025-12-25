@@ -10,7 +10,7 @@ class AdminManagedUser extends Equatable {
     required this.email,
     required this.role,
     required this.status,
-    required this.invitedAt,
+    this.invitedAt,
     this.fullName,
     this.companyName,
     this.lastSignInAt,
@@ -21,7 +21,7 @@ class AdminManagedUser extends Equatable {
   final String email;
   final UserRole role;
   final AdminUserStatus status;
-  final DateTime invitedAt;
+  final DateTime? invitedAt;
   final String? fullName;
   final String? companyName;
   final DateTime? lastSignInAt;

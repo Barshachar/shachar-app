@@ -1,35 +1,17 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient, type SupabaseClient, type User } from 'https://esm.sh/@supabase/supabase-js@2.43.0';
 import { getServiceClient, jsonResponse, errorResponse } from '../_shared/client.ts';
 
 type AdminAction = 'list' | 'invite' | 'set_role' | 'deactivate' | 'activate';
 
-type JwtPayload = {
-  sub?: string;
-  app_metadata?: {
-    roles?: string[];
-    role?: string;
-    company_id?: string;
-  };
-  user_metadata?: Record<string, unknown>;
-  [key: string]: unknown;
+type VerifiedUser = {
+  userId: string;
+  companyId: string;
+  roles: string[];
+  token: string;
 };
 
-function decodeJwt(token?: string | null): JwtPayload | null {
-  if (!token) {
-    return null;
-  }
-  const parts = token.split('.');
-  if (parts.length < 2) {
-    return null;
-  }
-  const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-  try {
-    const json = atob(payload);
-    return JSON.parse(json) as JwtPayload;
-  } catch {
-    return null;
-  }
-}
+type SupabaseLike = Pick<SupabaseClient, 'rpc' | 'from'>;
 
 function extractToken(req: Request, body: Record<string, unknown>): string | null {
   const header = req.headers.get('authorization');
@@ -40,32 +22,8 @@ function extractToken(req: Request, body: Record<string, unknown>): string | nul
   return typeof jwt === 'string' && jwt.length > 0 ? jwt : null;
 }
 
-function requireAdmin(payload: JwtPayload | null): void {
-  const roles: string[] = Array.isArray(payload?.app_metadata?.roles)
-    ? (payload?.app_metadata?.roles as string[])
-    : [];
-  const metadataRole = payload?.app_metadata?.role;
-  if (metadataRole) {
-    roles.push(metadataRole);
-  }
-  if (!roles.includes('system_admin') && !roles.includes('admin') && !roles.includes('vendor_admin')) {
-    throw new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
-  }
-}
-
-function ensureCompanyScope(payload: JwtPayload | null, requestedCompany?: string): string {
-  const scope = requestedCompany ?? payload?.app_metadata?.company_id;
-  if (!scope) {
-    throw new Response(JSON.stringify({ error: 'company scope required' }), { status: 400 });
-  }
-  if (payload?.app_metadata?.company_id && payload.app_metadata.company_id !== scope) {
-    throw new Response(JSON.stringify({ error: 'tenant mismatch' }), { status: 403 });
-  }
-  return scope;
-}
-
 async function resolveUserRole(
-  supabase: ReturnType<typeof getServiceClient>,
+  supabase: SupabaseLike,
   companyId: string,
   userId: string
 ): Promise<string | null> {
@@ -82,7 +40,87 @@ async function resolveUserRole(
   return data?.role ?? null;
 }
 
-serve(async (req) => {
+function unauthorized(message = 'unauthorized'): Response {
+  return new Response(JSON.stringify({ error: message }), { status: 401 });
+}
+
+function forbidden(message = 'forbidden'): Response {
+  return new Response(JSON.stringify({ error: message }), { status: 403 });
+}
+
+function requireEnv(key: string): string {
+  const value = Deno.env.get(key);
+  if (!value) {
+    throw new Error(`Missing env var ${key}`);
+  }
+  return value;
+}
+
+function makeAuthedClient(token: string): SupabaseClient {
+  const url = requireEnv('SUPABASE_URL');
+  const anonKey = requireEnv('SUPABASE_ANON_KEY');
+  return createClient(url, anonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
+}
+
+function normalizeRoles(user: User): string[] {
+  const rawRoles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata?.roles : [];
+  const role = user.app_metadata?.role;
+  const merged = [...rawRoles];
+  if (typeof role === 'string' && role.length > 0) {
+    merged.push(role);
+  }
+  return Array.from(new Set(merged));
+}
+
+async function verifyUser(token: string | null): Promise<VerifiedUser> {
+  if (!token) {
+    throw unauthorized();
+  }
+  const supabase = makeAuthedClient(token);
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) {
+    throw unauthorized();
+  }
+  const user = data.user;
+  const companyId = (user.app_metadata?.company_id as string | undefined)?.trim();
+  if (!companyId) {
+    throw forbidden('company scope required');
+  }
+  const roles = normalizeRoles(user);
+  if (!roles.includes('system_admin') && !roles.includes('admin') && !roles.includes('vendor_admin')) {
+    throw forbidden();
+  }
+  return {
+    userId: user.id,
+    companyId,
+    roles,
+    token
+  };
+}
+
+type HandlerDeps = {
+  getServiceClient: () => SupabaseClient;
+  getAuthedClient: (token: string) => SupabaseClient;
+  verifyUser: (token: string | null) => Promise<VerifiedUser>;
+};
+
+const defaultDeps: HandlerDeps = {
+  getServiceClient,
+  getAuthedClient: makeAuthedClient,
+  verifyUser
+};
+
+export async function handler(req: Request, deps: HandlerDeps = defaultDeps): Promise<Response> {
   if (req.method !== 'POST') {
     return errorResponse('Use POST', 405);
   }
@@ -96,11 +134,15 @@ serve(async (req) => {
 
   try {
     const token = extractToken(req, body);
-    const payload = decodeJwt(token);
-    requireAdmin(payload);
-    const companyId = ensureCompanyScope(payload, body.company_id as string | undefined);
+    const verified = await deps.verifyUser(token);
+    const bodyCompanyId = typeof body.company_id === 'string' ? (body.company_id as string) : undefined;
+    if (bodyCompanyId && bodyCompanyId !== verified.companyId) {
+      return forbidden('tenant mismatch');
+    }
+    const companyId = verified.companyId;
     const action = (body.action as AdminAction | undefined) ?? 'list';
-    const supabase = getServiceClient();
+    const supabase = deps.getAuthedClient(verified.token);
+    const serviceClient = deps.getServiceClient();
 
     if (action === 'list') {
       const { data, error } = await supabase.rpc('admin_list_company_users', {
@@ -130,7 +172,7 @@ serve(async (req) => {
       if (existing?.id) {
         userId = existing.id;
       } else {
-        const { data: created, error: createError } = await supabase.auth.admin.createUser({
+        const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
           email,
           email_confirm: false,
           app_metadata: {
@@ -147,7 +189,7 @@ serve(async (req) => {
         }
         userId = created?.user?.id ?? null;
         if (userId) {
-          await supabase.auth.admin.inviteUserByEmail(email).catch((err) => {
+          await serviceClient.auth.admin.inviteUserByEmail(email).catch((err) => {
             console.warn('inviteUserByEmail warning', err);
           });
         }
@@ -162,7 +204,7 @@ serve(async (req) => {
         p_user_id: userId,
         p_role: role,
         p_active: true,
-        p_actor: payload?.sub ?? null,
+        p_actor: verified.userId,
         p_reason: body.reason ?? null
       });
       if (rpcError) {
@@ -190,7 +232,7 @@ serve(async (req) => {
         p_user_id: targetUserId,
         p_role: desiredRole,
         p_active: activeFlag,
-        p_actor: payload?.sub ?? null,
+        p_actor: verified.userId,
         p_reason: body.reason ?? null
       });
       if (rpcError) {
@@ -209,4 +251,8 @@ serve(async (req) => {
     console.error('admin_user_management error', err);
     return errorResponse(err instanceof Error ? err.message : 'unexpected error', 500);
   }
-});
+}
+
+if (import.meta.main) {
+  serve((req) => handler(req));
+}

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:offline_toolkit/offline_toolkit.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_provider.dart';
@@ -82,15 +83,7 @@ class CustomerHomePage extends ConsumerWidget {
     final int pendingApprovals =
         ref.watch(approvalsInboxProvider).asData?.value.length ?? 0;
 
-    final List<_HomeShortcutConfig> shortcuts = <_HomeShortcutConfig>[
-      _HomeShortcutConfig(
-        keyValue: 'home_menu_promotions',
-        icon: Icons.local_offer_outlined,
-        label: l10n?.translate('homeTilePromotions') ?? 'מבצעים',
-        description: l10n?.translate('homeTilePromotionsDescription') ??
-            'חבילות והטבות במיוחד בשבילך',
-        onTap: () => context.go('/promotions'),
-      ),
+    final List<_HomeShortcutConfig> primaryShortcuts = <_HomeShortcutConfig>[
       _HomeShortcutConfig(
         keyValue: 'home_menu_catalog',
         icon: Icons.storefront_outlined,
@@ -116,14 +109,6 @@ class CustomerHomePage extends ConsumerWidget {
         onTap: () => context.go('/customer/cart'),
       ),
       _HomeShortcutConfig(
-        keyValue: 'home_menu_orders',
-        icon: Icons.receipt_long_outlined,
-        label: l10n?.translate('homeTileOrders') ?? 'הזמנות שלי',
-        description: l10n?.translate('homeTileOrdersDescription') ??
-            'מעקב אחרי סטטוסים ומשלוחים',
-        onTap: () => context.go('/customer/orders'),
-      ),
-      _HomeShortcutConfig(
         keyValue: 'home_menu_approvals',
         icon: Icons.verified_outlined,
         label: l10n?.translate('homeTileApprovals') ?? 'אישורים',
@@ -134,14 +119,33 @@ class CustomerHomePage extends ConsumerWidget {
       ),
     ];
 
+    final List<_HomeShortcutConfig> secondaryShortcuts = <_HomeShortcutConfig>[
+      _HomeShortcutConfig(
+        keyValue: 'home_menu_promotions',
+        icon: Icons.local_offer_outlined,
+        label: l10n?.translate('homeTilePromotions') ?? 'מבצעים',
+        description: l10n?.translate('homeTilePromotionsDescription') ??
+            'חבילות והטבות במיוחד בשבילך',
+        onTap: () => context.go('/promotions'),
+      ),
+      _HomeShortcutConfig(
+        keyValue: 'home_menu_orders',
+        icon: Icons.receipt_long_outlined,
+        label: l10n?.translate('homeTileOrders') ?? 'הזמנות שלי',
+        description: l10n?.translate('homeTileOrdersDescription') ??
+            'מעקב אחרי סטטוסים ומשלוחים',
+        onTap: () => context.go('/customer/orders'),
+      ),
+    ];
+
     return Scaffold(
       key: const ValueKey('customer_home_root'),
       backgroundColor: AColors.background,
       drawer: const _HomePlaceholderDrawer(),
       appBar: AppBar(
-        backgroundColor: AColors.primary,
+        backgroundColor: AColors.background,
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: AColors.foreground,
         leading: Builder(
           builder: (BuildContext leadingContext) {
             return IconButton(
@@ -153,7 +157,7 @@ class CustomerHomePage extends ConsumerWidget {
         ),
         title: Text(
           homeTitle,
-          style: ATypography.titleSm.copyWith(color: Colors.white),
+          style: ATypography.titleSm.copyWith(color: AColors.foreground),
         ),
         actions: [
           IconButton(
@@ -202,12 +206,34 @@ class CustomerHomePage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const OfflineSyncBanner(),
                   _HeroBanner(
                     greeting: greeting,
                     subtitle: subtitle,
                     searchPlaceholder: searchPlaceholder,
                     onSearchTap: () => context.go('/catalog/search'),
                   ),
+                  ASpacing.gapRow(ASpacing.lg),
+                  _CurrentOrderCard(
+                    title: currentOrderTitle,
+                    valueLabel: currentOrderValueLabel,
+                    itemsLabelTemplate: itemsLabel,
+                    emptyLabel: currentOrderEmpty,
+                    loadingLabel: currentOrderLoading,
+                    currencyFormat: currencyFormat,
+                    linesAsync: cartLinesAsync,
+                    onPrimaryAction: () => context.go('/customer/cart'),
+                    continueLabel: continueOrderLabel,
+                  ),
+                  ASpacing.gapRow(ASpacing.lg),
+                  _ShortcutGrid(shortcuts: primaryShortcuts, compact: compact),
+                  if (secondaryShortcuts.isNotEmpty) ...[
+                    ASpacing.gapRow(ASpacing.md),
+                    _ShortcutGrid(
+                      shortcuts: secondaryShortcuts.take(2).toList(),
+                      compact: compact,
+                    ),
+                  ],
                   ASpacing.gapRow(ASpacing.lg),
                   _CampaignBanner(
                     title: campaignTitle,
@@ -230,20 +256,6 @@ class CustomerHomePage extends ConsumerWidget {
                         context.go('/customer/orders/$id'),
                     onViewAllOrders: () => context.go('/customer/orders'),
                   ),
-                  ASpacing.gapRow(ASpacing.lg),
-                  _CurrentOrderCard(
-                    title: currentOrderTitle,
-                    valueLabel: currentOrderValueLabel,
-                    itemsLabelTemplate: itemsLabel,
-                    emptyLabel: currentOrderEmpty,
-                    loadingLabel: currentOrderLoading,
-                    currencyFormat: currencyFormat,
-                    linesAsync: cartLinesAsync,
-                    onPrimaryAction: () => context.go('/customer/cart'),
-                    continueLabel: continueOrderLabel,
-                  ),
-                  ASpacing.gapRow(ASpacing.xl),
-                  _ShortcutGrid(shortcuts: shortcuts, compact: compact),
                 ],
               ),
             );
@@ -271,7 +283,11 @@ class _HeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AColors.primary,
+        gradient: const LinearGradient(
+          colors: [AColors.primary, AColors.accent],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
         borderRadius: ARadii.lg,
         boxShadow: AElevation.shadowSoft,
       ),
@@ -446,8 +462,10 @@ class _CurrentOrderCard extends StatelessWidget {
     return Container(
       key: const ValueKey('home_current_order_card'),
       decoration: BoxDecoration(
-        color: AColors.primaryDark,
+        color: AColors.surface,
         borderRadius: ARadii.lg,
+        border: Border.all(color: AColors.cardBorder),
+        boxShadow: AElevation.shadowSoft,
       ),
       padding: const EdgeInsetsDirectional.fromSTEB(
         ASpacing.xl,
@@ -537,14 +555,14 @@ class _OrderCardContent extends StatelessWidget {
       children: [
         Text(
           title,
-          style: ATypography.titleSm.copyWith(color: Colors.white),
+          style: ATypography.titleSm.copyWith(color: AColors.foreground),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: ASpacing.sm),
         Text(
           subtitle,
-          style: ATypography.bodySm.copyWith(color: Colors.white70),
+          style: ATypography.bodySm.copyWith(color: AColors.mutedForeground),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -557,14 +575,18 @@ class _OrderCardContent extends StatelessWidget {
                 children: [
                   Text(
                     valueLabel,
-                    style: ATypography.bodySm.copyWith(color: Colors.white60),
+                    style: ATypography.bodySm.copyWith(
+                      color: AColors.mutedForeground,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: ASpacing.xs),
                   Text(
                     value,
-                    style: ATypography.titleMd.copyWith(color: Colors.white),
+                    style: ATypography.titleMd.copyWith(
+                      color: AColors.foreground,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -578,7 +600,9 @@ class _OrderCardContent extends StatelessWidget {
                 children: [
                   Text(
                     itemsLabel,
-                    style: ATypography.bodySm.copyWith(color: Colors.white70),
+                    style: ATypography.bodySm.copyWith(
+                      color: AColors.mutedForeground,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -947,9 +971,7 @@ class _HomePlaceholderDrawer extends StatelessWidget {
                     title: Text(aboutLabel),
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('$aboutLabel - בקרוב')),
-                      );
+                      context.go('/customer/about');
                     },
                   ),
                 ],

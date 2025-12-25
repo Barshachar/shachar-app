@@ -2,7 +2,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-type Database = unknown;
+import type { Database } from './generated/supabase.types';
 
 let client: SupabaseClient<Database> | null = null;
 

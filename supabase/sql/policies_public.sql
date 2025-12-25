@@ -11,7 +11,9 @@ alter table prices enable row level security;
 alter table orders enable row level security;
 alter table order_items enable row level security;
 alter table shipments enable row level security;
+alter table vendor_ratings enable row level security;
 alter table returns enable row level security;
+alter table approval_requests enable row level security;
 alter table attachments enable row level security;
 alter table notifications enable row level security;
 alter table audit_log enable row level security;
@@ -128,10 +130,6 @@ create policy inventory_vendor_rw on inventory
          and p.vendor_company_id = auth_company_id()
     )
   );
-
-create policy inventory_customer_read on inventory
-  for select to authenticated
-  using (auth_role() in ('customer_admin','buyer') or auth_role() in ('vendor_admin','vendor_user'));
 
 -- Price Lists
 create policy price_lists_admin_all on price_lists
@@ -277,9 +275,122 @@ create policy shipments_vendor_rw on shipments
     and vendor_company_id = auth_company_id()
   );
 
+-- Vendor Ratings
+create policy vendor_ratings_admin_all on vendor_ratings
+  for all using (auth_role() = 'admin') with check (auth_role() = 'admin');
+
+create policy vendor_ratings_customer_select on vendor_ratings
+  for select to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and customer_company_id = auth_company_id()
+  );
+
+create policy vendor_ratings_vendor_select on vendor_ratings
+  for select to authenticated
+  using (
+    auth_role() in ('vendor_admin','vendor_user')
+    and vendor_company_id = auth_company_id()
+  );
+
+create policy vendor_ratings_customer_insert on vendor_ratings
+  for insert to authenticated
+  with check (
+    auth_role() in ('customer_admin','buyer')
+    and customer_company_id = auth_company_id()
+    and created_by = auth.uid()
+    and exists (
+      select 1
+        from orders o
+       where o.id = order_id
+         and o.customer_company_id = auth_company_id()
+    )
+    and exists (
+      select 1
+        from order_items oi
+       where oi.order_id = order_id
+         and oi.vendor_company_id = vendor_company_id
+    )
+  );
+
 -- Returns
 create policy returns_admin_all on returns
   for all using (auth_role() = 'admin') with check (auth_role() = 'admin');
+
+create policy returns_customer_select on returns
+  for select to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and exists (
+      select 1
+        from orders o
+       where o.id = returns.order_id
+         and o.customer_company_id = auth_company_id()
+    )
+  );
+
+create policy returns_customer_insert on returns
+  for insert to authenticated
+  with check (
+    auth_role() in ('customer_admin','buyer')
+    and created_by = auth.uid()
+    and exists (
+      select 1
+        from orders o
+       where o.id = order_id
+         and o.customer_company_id = auth_company_id()
+    )
+    and exists (
+      select 1
+        from order_items oi
+       where oi.id = item_id
+         and oi.order_id = order_id
+    )
+  );
+
+create policy returns_vendor_select on returns
+  for select to authenticated
+  using (
+    auth_role() in ('vendor_admin','vendor_user')
+    and exists (
+      select 1
+        from order_items oi
+       where oi.id = returns.item_id
+         and oi.vendor_company_id = auth_company_id()
+    )
+  );
+
+-- Approval Requests
+create policy approval_requests_admin_all on approval_requests
+  for all using (auth_role() = 'admin') with check (auth_role() = 'admin');
+
+create policy approval_requests_company_select on approval_requests
+  for select to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and company_id = auth_company_id()
+  );
+
+create policy approval_requests_company_insert on approval_requests
+  for insert to authenticated
+  with check (
+    auth_role() in ('customer_admin','buyer')
+    and company_id = auth_company_id()
+    and requester_user_id = auth.uid()
+  );
+
+create policy approval_requests_approver_update on approval_requests
+  for update to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and company_id = auth_company_id()
+    and approver_user_id = auth.uid()
+  )
+  with check (
+    auth_role() in ('customer_admin','buyer')
+    and company_id = auth_company_id()
+    and approver_user_id = auth.uid()
+  );
 
 -- Attachments
 create policy attachments_admin_all on attachments
@@ -303,3 +414,15 @@ create policy notifications_owner_rw on notifications
 create policy audit_log_admin_read on audit_log
   for select using (auth_role() = 'admin');
 
+create policy audit_log_customer_orders_read on audit_log
+  for select to authenticated
+  using (
+    auth_role() in ('customer_admin','buyer')
+    and table_name = 'orders'
+    and exists (
+      select 1
+        from orders o
+       where o.id = audit_log.row_id
+         and o.customer_company_id = auth_company_id()
+    )
+  );

@@ -27,6 +27,7 @@ class OrderSummary {
 @JsonSerializable()
 class OrderItem {
   OrderItem({
+    required this.id,
     required this.variantId,
     required this.vendorCompanyId,
     required this.qty,
@@ -39,6 +40,7 @@ class OrderItem {
   factory OrderItem.fromJson(Map<String, dynamic> json) =>
       _$OrderItemFromJson(json);
 
+  final String id;
   final String variantId;
   final String vendorCompanyId;
   final double qty;
@@ -62,6 +64,9 @@ class OrderDetail {
     required this.createdAt,
     required this.items,
     required this.shipments,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancellationReason,
   });
 
   factory OrderDetail.fromJson(Map<String, dynamic> json) =>
@@ -76,6 +81,9 @@ class OrderDetail {
   final DateTime createdAt;
   final List<OrderItem> items;
   final List<OrderShipment> shipments;
+  final DateTime? cancelledAt;
+  final String? cancelledBy;
+  final String? cancellationReason;
 
   Map<String, dynamic> toJson() => _$OrderDetailToJson(this);
 }

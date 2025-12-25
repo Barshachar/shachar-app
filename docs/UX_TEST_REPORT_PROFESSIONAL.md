@@ -91,7 +91,7 @@
 ## 🎯 ממצאים לפי זרימה {#findings-by-flow}
 
 ### 1. Authentication & Session Start
-- **כיסוי**: מסך התחברות (`app/lib/src/auth/login_page.dart`), איפוס סיסמה, כניסת דמו, טעינות.
+- **כיסוי**: מסך התחברות (`apps/b2b_flutter/lib/src/auth/login_page.dart`), איפוס סיסמה, כניסת דמו, טעינות.
 - **ראיות**: `docs/screens/home_after_install.png`, `docs/screens/white_screen_now.png`.
 
 **חוזקות**
@@ -134,7 +134,7 @@
 ---
 
 ### 3. Catalog & Search
-- **כיסוי**: `/catalog`, `/catalog/search`, כרטיס מוצר, הוספה לסל (`app/lib/src/features/catalog/presentation/catalog_page.dart`).
+- **כיסוי**: `/catalog`, `/catalog/search`, כרטיס מוצר, הוספה לסל (`apps/b2b_flutter/lib/src/features/catalog/presentation/catalog_page.dart`).
 - **ראיות**: `docs/screens/catalog_search.png`.
 
 **חוזקות**
@@ -155,7 +155,7 @@
 ---
 
 ### 4. Quick Order Workspace
-- **כיסוי**: `/catalog/quick-order`, ייבוא CSV, Undo Batch (`app/lib/src/features/catalog/presentation/quick_order_page.dart`).
+- **כיסוי**: `/catalog/quick-order`, ייבוא CSV, Undo Batch (`apps/b2b_flutter/lib/src/features/catalog/presentation/quick_order_page.dart`).
 - **ראיות**: `docs/screens/quick_order.png`.
 
 **חוזקות**
@@ -176,7 +176,7 @@
 ---
 
 ### 5. Cart & Checkout Draft
-- **כיסוי**: `/customer/cart`, תחזוקת טיוטה, חישובי מחיר (`app/lib/src/features/orders/presentation/cart_page.dart`).
+- **כיסוי**: `/customer/cart`, תחזוקת טיוטה, חישובי מחיר (`apps/b2b_flutter/lib/src/features/orders/presentation/cart_page.dart`).
 
 **חוזקות**
 - שמירת טיוטה אוטומטית וקיום Undo Batch מחוברת ל-Quick Order.

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/auth/session_provider.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_shipments_page.dart';
 import 'package:ashachar_marketplace/src/features/rfq/presentation/vendor_rfq_page.dart';
 
@@ -46,7 +47,7 @@ class VendorOrderSummary {
 
 final vendorOrdersProvider =
     FutureProvider.autoDispose<List<VendorOrderSummary>>((ref) async {
-  final SupabaseClient client = Supabase.instance.client;
+  final SupabaseClient client = ref.read(supabaseClientProvider);
   try {
     final dynamic response = await client
         .from('v_vendor_orders')
@@ -155,7 +156,7 @@ class VendorOrdersPage extends ConsumerWidget {
                 return;
               }
               try {
-                await Supabase.instance.client.auth.signOut();
+                await ref.read(supabaseClientProvider).auth.signOut();
                 debugPrint('[AUTH_FLOW] logout=ok');
                 if (!context.mounted) {
                   return;

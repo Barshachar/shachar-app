@@ -9,9 +9,12 @@ import 'package:ashachar_marketplace/src/core/presentation/status_tokens.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/order_approval_state.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/widgets/approval_status_banner.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/order_models.dart';
+import 'package:ashachar_marketplace/src/features/orders/presentation/order_cancellation_section.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/checkout_page.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/orders_controller.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/widgets/order_status_chip.dart';
+import 'package:ashachar_marketplace/src/features/ratings/presentation/order_vendor_rating_section.dart';
+import 'package:ashachar_marketplace/src/features/returns/presentation/order_returns_section.dart';
 
 // UI-only enums & models (private)
 enum _UiApprovalStepStatus { approved, pending, rejected }
@@ -234,6 +237,22 @@ class _OrderDetailBodyState extends ConsumerState<_OrderDetailBody> {
     final TextDirection textDirection = Directionality.of(context);
     final String createdLabel =
         dateFormat.format(widget.detail.createdAt.toLocal());
+    final Map<String, String> vendorNames = <String, String>{
+      for (final OrderShipment shipment in widget.detail.shipments)
+        if ((shipment.vendorName ?? '').trim().isNotEmpty)
+          shipment.vendorCompanyId: shipment.vendorName!.trim(),
+    };
+    final List<VendorRatingTarget> ratingTargets = widget.detail.items
+        .map((OrderItem item) => item.vendorCompanyId)
+        .toSet()
+        .map(
+          (String vendorId) => VendorRatingTarget(
+            vendorId: vendorId,
+            vendorName: vendorNames[vendorId] ?? vendorId,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.vendorName.compareTo(b.vendorName));
     final List<Widget> approvalWidgets = widget.approvalAsync.when(
       data: (OrderApprovalState state) => _buildApprovalWidgets(context, state),
       loading: () => const <Widget>[
@@ -331,6 +350,15 @@ class _OrderDetailBodyState extends ConsumerState<_OrderDetailBody> {
             ],
           ),
         ),
+        if (_shouldShowCancellation(widget.detail)) ...[
+          const SizedBox(height: ASpacing.lg),
+          OrderCancellationSection(
+            orderId: widget.detail.id,
+            status: widget.detail.status,
+            cancelledAt: widget.detail.cancelledAt,
+            cancellationReason: widget.detail.cancellationReason,
+          ),
+        ],
         const SizedBox(height: ASpacing.xxl),
         Text(
           widget.l10n?.translate('orderDetailLines') ?? 'Order lines',
@@ -379,6 +407,21 @@ class _OrderDetailBodyState extends ConsumerState<_OrderDetailBody> {
               ),
             ),
           ),
+        if (widget.detail.items.isNotEmpty) ...[
+          const SizedBox(height: ASpacing.xxl),
+          OrderReturnsSection(
+            orderId: widget.detail.id,
+            orderStatus: widget.detail.status,
+            items: widget.detail.items,
+          ),
+        ],
+        if (ratingTargets.isNotEmpty) ...[
+          const SizedBox(height: ASpacing.xxl),
+          OrderVendorRatingSection(
+            orderId: widget.detail.id,
+            vendors: ratingTargets,
+          ),
+        ],
       ],
     );
   }
@@ -1053,4 +1096,22 @@ String _resolveLocale(BuildContext context) {
     return locale.languageCode;
   }
   return 'en';
+}
+
+bool _shouldShowCancellation(OrderDetail detail) {
+  final String status = detail.status.trim().toLowerCase();
+  if (status == 'cancelled') {
+    return true;
+  }
+  switch (status) {
+    case 'draft':
+    case 'placed':
+    case 'confirmed':
+    case 'picking':
+    case 'approved':
+    case 'pending_approval':
+      return true;
+    default:
+      return false;
+  }
 }

@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_ui_actions.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/widgets/admin_action_keys.dart';
 
@@ -127,7 +128,7 @@ class _AdminPriceListsPageState extends ConsumerState<AdminPriceListsPage> {
     );
     await Future<void>.delayed(Duration.zero);
     try {
-      final SupabaseClient client = Supabase.instance.client;
+      final SupabaseClient client = ref.read(supabaseClientProvider);
       final dynamic response = await client
           .from('companies')
           .select('id, name')
@@ -232,7 +233,7 @@ class _AdminPriceListsPageState extends ConsumerState<AdminPriceListsPage> {
     try {
       final String message = await importPricesUI(
         callImport: () async {
-          final SupabaseClient client = Supabase.instance.client;
+          final SupabaseClient client = ref.read(supabaseClientProvider);
           final FunctionResponse response = await client.functions.invoke(
             'price_lists_import',
             body: {
@@ -278,7 +279,9 @@ class _AdminPriceListsPageState extends ConsumerState<AdminPriceListsPage> {
     );
     setState(() => _isProcessing = true);
     try {
-      await Supabase.instance.client.rpc<void>('refresh_mv_effective_prices');
+      await ref
+          .read(supabaseClientProvider)
+          .rpc<void>('refresh_mv_effective_prices');
       if (!mounted) return;
       final String message =
           l10n?.translate('adminPriceImportRefreshSuccess') ??

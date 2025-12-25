@@ -1,0 +1,3 @@
+class OrdersModule {
+  const OrdersModule();
+}

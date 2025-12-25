@@ -4,11 +4,14 @@ import 'package:ashachar_marketplace/src/features/approvals/presentation/order_a
 import 'package:ashachar_marketplace/src/features/orders/domain/order_models.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/order_detail_page.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/orders_controller.dart';
+import 'package:ashachar_marketplace/src/features/returns/data/supabase_return_request_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+
+import '../test_utils/fake_return_request_repository.dart';
 
 void main() {
   setUp(() {
@@ -27,6 +30,7 @@ void main() {
       createdAt: DateTime(2024, 5, 1, 10, 0),
       items: [
         OrderItem(
+          id: 'item-localized-1',
           variantId: 'var-1',
           vendorCompanyId: 'vendor-1',
           qty: 2,
@@ -51,6 +55,9 @@ void main() {
               sentAt: DateTime(2024, 5, 1, 9, 30),
               resolvedAt: DateTime(2024, 5, 1, 12, 15),
             ),
+          ),
+          returnRequestRepositoryProvider.overrideWithValue(
+            FakeReturnRequestRepository(),
           ),
         ],
         child: _buildApp(const OrderDetailPage(orderId: 'order-localized')),

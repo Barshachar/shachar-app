@@ -80,6 +80,13 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 
     final AsyncValue<List<AdminManagedUser>> usersState =
         ref.watch(adminUsersControllerProvider);
+    final List<AdminManagedUser> safeUsers =
+        (usersState.value?.isNotEmpty ?? false)
+            ? usersState.value!
+            : AdminUsersController.fallbackUsers;
+    final bool isLoading = usersState.isLoading;
+    final Object? loadError =
+        usersState is AsyncError ? (usersState as AsyncError).error : null;
 
     final String title =
         l10n?.translate('adminUsersTitle') ?? 'User management';
@@ -131,20 +138,53 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               _buildFilters(context, l10n, isRtl),
               const SizedBox(height: ASpacing.md),
               Expanded(
-                child: usersState.when(
-                  data: (List<AdminManagedUser> users) =>
-                      _buildContent(context, l10n, users),
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  error: (Object error, StackTrace stack) => _ErrorState(
-                    message: error.toString(),
-                    onRetry: () => ref
-                        .read(adminUsersControllerProvider.notifier)
-                        .refresh(),
-                    retryLabel:
-                        l10n?.translate('adminUsersRefresh') ?? 'Refresh',
-                  ),
+                child: Stack(
+                  children: <Widget>[
+                    _buildContent(context, l10n, safeUsers),
+                    if (isLoading)
+                      const Align(
+                        alignment: Alignment.topCenter,
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                    if (loadError != null)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        left: 0,
+                        child: Card(
+                          color: SemanticColors.destructive
+                              .withValues(alpha: 0.08),
+                          child: Padding(
+                            padding: const EdgeInsets.all(ASpacing.sm),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    l10n?.translate('adminUsersError') ??
+                                        'Load failed, showing fallback users.',
+                                    style: ATypography.bodySm.copyWith(
+                                      color: SemanticColors.destructive,
+                                    ),
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => ref
+                                      .read(
+                                          adminUsersControllerProvider.notifier)
+                                      .refresh(),
+                                  icon: const Icon(Icons.refresh),
+                                  label: Text(
+                                    l10n?.translate('adminUsersRefresh') ??
+                                        'רענן',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -312,93 +352,133 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: <DataColumn>[
-              DataColumn(
-                label: Text(
-                  l10n?.translate('adminUsersIdentityHeader') ?? 'User',
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  roleLabel,
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  lastSignInLabel,
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  invitedAtLabel,
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  statusLabel,
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DataColumn(
-                label: Text(
-                  actionsLabel,
-                  style:
-                      ATypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-            rows: users
-                .map(
-                  (AdminManagedUser user) => DataRow(
-                    cells: <DataCell>[
-                      DataCell(_UserIdentityCell(user: user)),
-                      DataCell(Text(_roleLabel(user.role, l10n))),
-                      DataCell(Text(
-                          _formatDateTime(user.lastSignInAt, context, l10n))),
-                      DataCell(
-                          Text(_formatDateTime(user.invitedAt, context, l10n))),
-                      DataCell(_StatusChip(user: user, l10n: l10n)),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            if (user.isDisabled)
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _onActivate(context, l10n, user),
-                                icon: const Icon(Icons.refresh),
-                                label: Text(
-                                  l10n?.translate('adminUsersActivateCta') ??
-                                      'Activate',
-                                ),
-                              )
-                            else
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _onDeactivate(context, l10n, user),
-                                icon: const Icon(Icons.block),
-                                label: Text(
-                                  l10n?.translate('adminUsersDeactivateCta') ??
-                                      'Disable',
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
+          child: IntrinsicWidth(
+            child: DataTable(
+              columnSpacing: ASpacing.lg,
+              columns: <DataColumn>[
+                DataColumn(
+                  label: Text(
+                    l10n?.translate('adminUsersIdentityHeader') ?? 'User',
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
                   ),
-                )
-                .toList(growable: false),
+                ),
+                DataColumn(
+                  label: Text(
+                    roleLabel,
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    lastSignInLabel,
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    invitedAtLabel,
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    statusLabel,
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    actionsLabel,
+                    style: ATypography.bodyMd
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+              rows: users
+                  .map(
+                    (AdminManagedUser user) => DataRow(
+                      cells: <DataCell>[
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 220, maxWidth: 280),
+                            child: _UserIdentityCell(user: user),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 120, maxWidth: 180),
+                            child: Text(_roleLabel(user.role, l10n)),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 150, maxWidth: 220),
+                            child: Text(_formatDateTime(
+                                user.lastSignInAt, context, l10n)),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 150, maxWidth: 220),
+                            child: Text(
+                                _formatDateTime(user.invitedAt, context, l10n)),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 140, maxWidth: 200),
+                            child: _StatusChip(user: user, l10n: l10n),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                                minWidth: 200, maxWidth: 260),
+                            child: Wrap(
+                              spacing: ASpacing.xs,
+                              runSpacing: ASpacing.xs,
+                              children: <Widget>[
+                                if (user.isDisabled)
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _onActivate(context, l10n, user),
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(
+                                      l10n?.translate(
+                                              'adminUsersActivateCta') ??
+                                          'Activate',
+                                    ),
+                                  )
+                                else
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _onDeactivate(context, l10n, user),
+                                    icon: const Icon(Icons.block),
+                                    label: Text(
+                                      l10n?.translate(
+                                              'adminUsersDeactivateCta') ??
+                                          'Disable',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
           ),
         ),
       ),
@@ -848,42 +928,6 @@ class _EmptyState extends StatelessWidget {
                 color: SemanticColors.foregroundMuted,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-    required this.retryLabel,
-  });
-
-  final String message;
-  final VoidCallback onRetry;
-  final String retryLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.error_outline,
-              size: 48, color: SemanticColors.destructive),
-          const SizedBox(height: ASpacing.md),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: ASpacing.md),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: Text(retryLabel),
           ),
         ],
       ),

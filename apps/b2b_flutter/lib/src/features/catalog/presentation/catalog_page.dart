@@ -1,21 +1,20 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'dart:convert';
-
 import 'package:ashachar_marketplace/src/auth/debug_auth_sheet.dart';
 import 'package:ashachar_marketplace/src/core/async_value_x.dart';
 import 'package:ashachar_marketplace/src/core/config/app_config.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/catalog/domain/catalog_models.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_controller.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/product_media_utils.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/cart_line.dart';
-import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/cart_controller.dart';
 import 'package:ashachar_marketplace/src/features/pricing/domain/resolved_price.dart';
 import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
 import 'package:ashachar_marketplace/src/features/pricing/presentation/contract_price_badge.dart';
 import 'package:ashachar_marketplace/src/features/pricing/presentation/price_quote_controller.dart';
+import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
 import 'package:ashachar_marketplace/src/features/rfq/presentation/rfq_create_dialog.dart';
 import 'package:ashachar_marketplace/src/features/rfq/presentation/rfq_providers.dart';
 import 'package:flutter/material.dart';
@@ -181,6 +180,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   Widget build(BuildContext context) {
     final l10n = Localizations.of<MarketplaceLocalizations>(
         context, MarketplaceLocalizations);
+    final cartState = ref.watch(cartControllerProvider);
     final catalogAsync = ref.watch(catalogControllerProvider);
     final debugFeaturesEnabled = ref.watch(debugFeaturesEnabledProvider);
     bool isAuthenticated = false;
@@ -235,7 +235,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
 
     Future<void> handleSignOut() async {
       try {
-        await Supabase.instance.client.auth.signOut();
+        await ref.read(supabaseClientProvider).auth.signOut();
         debugPrint('[AUTH_FLOW] logout=ok');
         if (!mounted) {
           return;
@@ -400,168 +400,12 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
           );
         },
       ),
-      floatingActionButton: debugFeaturesEnabled
-          ? FloatingActionButton.extended(
-              onPressed: () => _runTestOrderFlow(context),
-              icon: const Icon(Icons.playlist_add_check),
-              label: const Text('Test Order'),
-            )
-          : null,
+      bottomNavigationBar: QuickOrderNavBar(
+        currentTab: QuickNavTab.catalog,
+        checkoutOrderId: cartState.draftOrderId,
+      ),
+      floatingActionButton: null,
     );
-  }
-
-  Future<void> _runTestOrderFlow(BuildContext context) async {
-    final SupabaseClient supabase = Supabase.instance.client;
-
-    final bool ensured = await _ensureAuthenticatedSession(context, supabase);
-    if (!ensured) {
-      return;
-    }
-
-    try {
-      ProductVariant? variant;
-      final CatalogState? state =
-          ref.read(catalogControllerProvider).asData?.value;
-      final List<Product> cachedCatalog = state?.items ?? const <Product>[];
-      if (cachedCatalog.isNotEmpty && cachedCatalog.first.variants.isNotEmpty) {
-        variant = cachedCatalog.first.variants.first;
-      } else {
-        final dynamic response = await supabase
-            .from('product_variants')
-            .select('id,product_id,uom,active')
-            .eq('active', true)
-            .limit(1);
-        final List<Map<String, dynamic>> rows = response is List
-            ? response
-                .map((dynamic e) => Map<String, dynamic>.from(e as Map))
-                .toList()
-            : const <Map<String, dynamic>>[];
-        if (rows.isNotEmpty) {
-          final Map<String, dynamic> row = rows.first;
-          variant = ProductVariant(
-            id: row['id'] as String,
-            productId: row['product_id'] as String,
-            attributes: const <String, dynamic>{},
-            barcode: null,
-            active: true,
-            uom: (row['uom'] as String?) ?? 'EA',
-          );
-        }
-      }
-
-      if (variant == null) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No variants available')),
-        );
-        return;
-      }
-
-      final OrdersRepository ordersRepository =
-          ref.read(ordersRepositoryProvider);
-      final String draftId = await ordersRepository.createDraftIfMissing();
-      // Debug log to help QA trace drafts during automated flows
-      // ignore: avoid_print
-      final session = Supabase.instance.client.auth.currentSession;
-      final Map<String, dynamic>? payload =
-          _decodeJwtPayload(session?.accessToken);
-      final Object? companyMeta = session?.user.appMetadata['company_id'];
-      final Object? claimCompany = payload?['company_id'];
-      final Object? claimRole = payload?['role'];
-      final Object? claimSub = payload?['sub'];
-      final Object? appMeta = payload?['app_metadata'];
-      // ignore: avoid_print
-      print(
-          '[ORDER_FLOW] draft_id=$draftId company_meta=$companyMeta claim_company=$claimCompany claim_role=$claimRole claim_sub=$claimSub app_meta=$appMeta');
-      await ordersRepository.addLineToOrder(
-        orderId: draftId,
-        variantId: variant.id,
-        qty: 1,
-      );
-      final String orderId = await ordersRepository.submitDraftOrder(draftId);
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order submitted: $orderId')),
-      );
-
-      final dynamic shipmentsResponse = await supabase
-          .from('shipments')
-          .select('order_id,vendor_company_id,status,created_at')
-          .eq('order_id', orderId);
-      final List<Map<String, dynamic>> shipments = shipmentsResponse is List
-          ? shipmentsResponse
-              .map((dynamic e) => Map<String, dynamic>.from(e as Map))
-              .toList()
-          : const <Map<String, dynamic>>[];
-      // ignore: avoid_print
-      print('[ORDER_FLOW] shipments=${shipments.length} order_id=$orderId');
-
-      if (!context.mounted) return;
-      context.go('/customer/orders/$orderId');
-    } catch (error, stackTrace) {
-      // ignore: avoid_print
-      print('[ORDER_FLOW] failed $error');
-      // ignore: avoid_print
-      print(stackTrace);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order flow failed: $error')),
-      );
-    }
-  }
-
-  Map<String, dynamic>? _decodeJwtPayload(String? token) {
-    if (token == null || token.isEmpty) {
-      return null;
-    }
-    final List<String> parts = token.split('.');
-    if (parts.length < 2) {
-      return null;
-    }
-    try {
-      final String normalized = base64Url.normalize(parts[1]);
-      final String decoded = utf8.decode(base64Url.decode(normalized));
-      final dynamic json = jsonDecode(decoded);
-      if (json is Map<String, dynamic>) {
-        return json;
-      }
-    } catch (_) {
-      return null;
-    }
-    return null;
-  }
-
-  Future<bool> _ensureAuthenticatedSession(
-    BuildContext context,
-    SupabaseClient supabase,
-  ) async {
-    if (supabase.auth.currentUser != null) {
-      return true;
-    }
-
-    final AppConfig config = await ref.read(appConfigProvider.future);
-    final String email = (config.demoEmail ?? '').isNotEmpty
-        ? config.demoEmail!
-        : 'buyer1@demo.local';
-    final String password = (config.demoPassword ?? '').isNotEmpty
-        ? config.demoPassword!
-        : 'Demo123!';
-
-    try {
-      await supabase.auth.signOut();
-      await supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      return true;
-    } catch (error) {
-      if (!context.mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Demo login failed: $error')),
-      );
-      return false;
-    }
   }
 }
 
@@ -900,7 +744,7 @@ class _CatalogProductCardState extends ConsumerState<_CatalogProductCard> {
       }
       final messenger = ScaffoldMessenger.of(context);
       final String baseMessage =
-          _l10n?.translate('productAddedToDraft') ?? 'Added to draft';
+          _l10n?.translate('cartAddSuccess') ?? 'נוסף לעגלה';
       final String successMessage =
           _formatAddToCartSuccess(resolvedPrice, baseMessage);
       messenger.showSnackBar(

@@ -10,6 +10,8 @@ import 'package:intl/intl.dart' as intl;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/features/catalog/domain/catalog_models.dart';
+import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_recommendations_provider.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/cart_line.dart';
@@ -69,6 +71,11 @@ class _CartPageState extends ConsumerState<CartPage> {
         children: [
           const OfflineSyncBanner(),
           if (cartState.isLoading) const LinearProgressIndicator(minHeight: 2),
+          if (draftOrderId != null)
+            Padding(
+              padding: const EdgeInsets.all(ASpacing.md),
+              child: _CartTotalsFooter(draftOrderId: draftOrderId),
+            ),
           Expanded(
             child: draftOrderId == null
                 ? _buildLoading()
@@ -76,9 +83,13 @@ class _CartPageState extends ConsumerState<CartPage> {
           ),
         ],
       ),
-      bottomNavigationBar: draftOrderId == null
-          ? null
-          : _CartTotalsFooter(draftOrderId: draftOrderId),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: QuickOrderNavBar(
+          currentTab: QuickNavTab.cart,
+          checkoutOrderId: draftOrderId,
+        ),
+      ),
     );
   }
 
@@ -170,14 +181,34 @@ class _CartLinesList extends ConsumerWidget {
                       MapEntry<String, List<CartLine>> b) =>
                   a.key.compareTo(b.key));
 
+        final Set<String> excludedVariantIds = {
+          for (final CartLine line in lines)
+            if (line.variantId.isNotEmpty) line.variantId,
+        };
+        final CatalogRecommendationRequest recommendationsRequest =
+            CatalogRecommendationRequest(
+          excludedVariantIds: excludedVariantIds,
+          allowedVariantIds: companyCatalog,
+          limit: 4,
+          seed: companyId,
+        );
+
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          itemCount: groups.length,
+          itemCount: groups.length + 1,
           itemBuilder: (BuildContext context, int index) {
+            if (index == groups.length) {
+              return Padding(
+                padding: const EdgeInsets.only(top: ASpacing.xl),
+                child: _CartRecommendationsSection(
+                  request: recommendationsRequest,
+                ),
+              );
+            }
             final MapEntry<String, List<CartLine>> entry = groups[index];
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index == groups.length - 1 ? 0 : ASpacing.xl,
+                bottom: ASpacing.xl,
               ),
               child: _CartVendorSection(
                 vendorId: entry.key,
@@ -394,6 +425,9 @@ class _CartLineTile extends ConsumerWidget {
         (l10n?.translate('notInCatalog') ?? 'Not in catalog');
     final String removeTooltip =
         l10n?.translate('cartRemoveLineTooltip') ?? 'Remove';
+    final String skuLabel = (line.variantSku?.isNotEmpty ?? false)
+        ? line.variantSku!
+        : line.variantId;
 
     Future<void> updateQuantity(num nextValue) async {
       final double target = nextValue.toDouble().clamp(1, 999);
@@ -428,197 +462,194 @@ class _CartLineTile extends ConsumerWidget {
 
     final intl.NumberFormat currency =
         intl.NumberFormat.currency(symbol: '₪', decimalDigits: 2);
-    final String subtotalLabel = l10n?.translate('subtotalShort') ?? 'Subtotal';
-    final String totalLabel = l10n?.translate('totalShort') ?? 'Total';
+    final Widget qtyStepper = AQtyStepper(
+      key: ValueKey<String>('cart_qty_stepper_${line.rowId}'),
+      qty: line.qty,
+      min: 1,
+      step: 1,
+      enabled: !notInCatalog,
+      onChanged: (value) => unawaited(updateQuantity(value)),
+    );
 
-    final List<Widget> children = <Widget>[
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              line.displayTitle,
-              style: theme.textTheme.titleMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+    final Widget totalTag = Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          currency.format(line.unitPrice),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AColors.foreground,
           ),
-          IconButton(
-            tooltip: removeTooltip,
-            onPressed: deleteLine,
-            icon: const Icon(Icons.delete_outline),
-          ),
-        ],
-      ),
-    ];
-
-    if (notInCatalog) {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Chip(
-            key: ValueKey<String>(
-              'cart_row_not_in_catalog_${line.variantId}',
-            ),
-            label: Text(
-              notInCatalogLabel,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-            ),
-            avatar: Icon(
-              Icons.warning_amber_rounded,
-              color: theme.colorScheme.error,
-              size: 18,
-            ),
-            backgroundColor:
-                theme.colorScheme.errorContainer.withValues(alpha: 0.2),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-      );
-      children.add(const SizedBox(height: 4));
-      children.add(
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
-            onPressed: () async {
-              try {
-                final String? rfqId =
-                    await _launchRfqRequest(context, ref, <CartLine>[line]);
-                if (!context.mounted || rfqId == null) {
-                  return;
-                }
-                final String successMessage =
-                    l10n?.translate('cartRequestAccessSuccess') ??
-                        'בקשה נשלחה לספק.';
-                await _handleRfqResult(
-                  navigator: navigator,
-                  messenger: messenger,
-                  ref: ref,
-                  rfqId: rfqId,
-                  successMessage: successMessage,
-                );
-              } on Object catch (error) {
-                if (!context.mounted) {
-                  return;
-                }
-                final String message =
-                    l10n?.translate('cartCreateQuoteError') ??
-                        "Couldn't create request.";
-                messenger.showSnackBar(
-                  SnackBar(content: Text('$message $error')),
-                );
-              }
-            },
-            icon: const Icon(Icons.outgoing_mail, size: 18),
-            label: Text(
-              l10n?.translate('cartRequestAccess') ?? 'בקש גישה',
-            ),
+        const SizedBox(height: 4),
+        Text(
+          '${currency.format(line.unitPrice)} × ${line.qty.toStringAsFixed(0)} = ${currency.format(line.lineTotal)}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AColors.mutedForeground,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
         ),
-      );
-    }
+      ],
+    );
 
-    if (line.variantLabel.isNotEmpty) {
-      children.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            line.variantLabel,
-            style: theme.textTheme.bodySmall,
-            textAlign: TextAlign.start,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-          ),
-        ),
-      );
-    }
-
-    children
-      ..add(const SizedBox(height: 12))
-      ..add(
-        LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final bool isCompactRow = constraints.maxWidth < 360;
-            final Widget totalsColumn = Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '$subtotalLabel: ${currency.format(line.subtotal)}',
-                  style: theme.textTheme.bodyLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                ),
-                Text(
-                  '$totalLabel: ${currency.format(line.lineTotal)}',
-                  style: theme.textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                ),
-                const SizedBox(height: 8),
-                _CartLineEffectivePrice(
-                  line: line,
-                  companyId: pricingCompanyId,
-                ),
-              ],
-            );
-            final Widget qtyStepper = AQtyStepper(
-              key: ValueKey<String>('cart_qty_stepper_${line.rowId}'),
-              qty: line.qty,
-              min: 1,
-              step: 1,
-              enabled: !notInCatalog,
-              onChanged: (value) => unawaited(updateQuantity(value)),
-            );
-
-            if (isCompactRow) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: qtyStepper,
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: totalsColumn,
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                qtyStepper,
-                const SizedBox(width: ASpacing.lg),
-                Expanded(
-                  child: Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: totalsColumn,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
+    final Widget deleteButton = IconButton(
+      tooltip: removeTooltip,
+      onPressed: deleteLine,
+      icon: const Icon(Icons.delete_outline),
+    );
 
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: ASpacing.sm),
+      shape: RoundedRectangleBorder(borderRadius: ARadii.md),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(ASpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AColors.surfaceMuted,
+                    borderRadius: ARadii.sm,
+                    border: Border.all(color: AColors.cardBorder),
+                  ),
+                  child:
+                      const Icon(Icons.inventory_2, color: AColors.neutral600),
+                ),
+                const SizedBox(width: ASpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        line.displayTitle,
+                        style: theme.textTheme.titleMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'SKU: $skuLabel',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AColors.mutedForeground,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (line.variantLabel.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          line.variantLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AColors.mutedForeground,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (notInCatalog) ...[
+                        const SizedBox(height: 6),
+                        Chip(
+                          key: ValueKey<String>(
+                            'cart_row_not_in_catalog_${line.variantId}',
+                          ),
+                          label: Text(
+                            notInCatalogLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          avatar: Icon(
+                            Icons.warning_amber_rounded,
+                            color: theme.colorScheme.error,
+                            size: 16,
+                          ),
+                          backgroundColor: theme.colorScheme.errorContainer
+                              .withValues(alpha: 0.2),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: ASpacing.md),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      totalTag,
+                      const SizedBox(height: 8),
+                      _CartLineEffectivePrice(
+                        line: line,
+                        companyId: pricingCompanyId,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: ASpacing.md),
+            Row(
+              children: [
+                qtyStepper,
+                const Spacer(),
+                deleteButton,
+              ],
+            ),
+            if (notInCatalog)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      final String? rfqId = await _launchRfqRequest(
+                        context,
+                        ref,
+                        <CartLine>[line],
+                      );
+                      if (!context.mounted || rfqId == null) {
+                        return;
+                      }
+                      final String successMessage =
+                          l10n?.translate('cartRequestAccessSuccess') ??
+                              'בקשה נשלחה לספק.';
+                      await _handleRfqResult(
+                        navigator: navigator,
+                        messenger: messenger,
+                        ref: ref,
+                        rfqId: rfqId,
+                        successMessage: successMessage,
+                      );
+                    } on Object catch (error) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      final String message =
+                          l10n?.translate('cartCreateQuoteError') ??
+                              "Couldn't create request.";
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('$message $error')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.outgoing_mail, size: 18),
+                  label: Text(
+                    l10n?.translate('cartRequestAccess') ?? 'בקש גישה',
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -712,6 +743,9 @@ class _CartLineEffectivePrice extends ConsumerWidget {
         builder: (BuildContext context, BoxConstraints constraints) {
           final bool stack =
               !constraints.hasBoundedWidth || constraints.maxWidth < 360;
+          final double maxWidth = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
           final Widget labelWidget = Text(
             label,
             style: labelStyle,
@@ -726,7 +760,7 @@ class _CartLineEffectivePrice extends ConsumerWidget {
             child: value,
           );
           if (stack) {
-            return Column(
+            final Widget column = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 labelWidget,
@@ -734,8 +768,12 @@ class _CartLineEffectivePrice extends ConsumerWidget {
                 valueWidget,
               ],
             );
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: column,
+            );
           }
-          return Row(
+          final Widget row = Row(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -743,6 +781,10 @@ class _CartLineEffectivePrice extends ConsumerWidget {
               const SizedBox(width: ASpacing.sm),
               Flexible(child: valueWidget),
             ],
+          );
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: row,
           );
         },
       );
@@ -841,6 +883,190 @@ void _handleError(BuildContext context, Object error) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('$baseMessage $error')),
   );
+}
+
+class _CartRecommendationsSection extends ConsumerWidget {
+  const _CartRecommendationsSection({required this.request});
+
+  final CatalogRecommendationRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final AsyncValue<List<CatalogRecommendation>> recommendationsAsync =
+        ref.watch(catalogRecommendationsProvider(request));
+
+    return recommendationsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (Object _, StackTrace __) => const SizedBox.shrink(),
+      data: (List<CatalogRecommendation> recommendations) {
+        if (recommendations.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final String title = l10n?.translate('cartRecommendationsTitle') ??
+            'Complete your order';
+        final String subtitle =
+            l10n?.translate('cartRecommendationsSubtitle') ??
+                'Products often ordered together';
+
+        return Column(
+          key: const ValueKey<String>('cart_recommendations_section'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: ATypography.titleMd),
+            const SizedBox(height: ASpacing.xs),
+            Text(
+              subtitle,
+              style: ATypography.bodySm.copyWith(
+                color: AColors.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: ASpacing.md),
+            SizedBox(
+              height: 210,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recommendations.length,
+                separatorBuilder: (_, __) => const SizedBox(width: ASpacing.md),
+                itemBuilder: (BuildContext context, int index) {
+                  return _CartRecommendationCard(
+                    recommendation: recommendations[index],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CartRecommendationCard extends ConsumerWidget {
+  const _CartRecommendationCard({
+    required this.recommendation,
+  });
+
+  final CatalogRecommendation recommendation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final Locale locale = Localizations.localeOf(context);
+    final String title =
+        _recommendationDisplayName(recommendation.product, locale);
+    final String reason = l10n?.translate(recommendation.reason.l10nKey) ??
+        _fallbackRecommendationReason(recommendation.reason);
+    final String addLabel = l10n?.translate('cartRecommendationsAdd') ?? 'Add';
+    final String addedMessage =
+        l10n?.translate('cartRecommendationsAdded') ?? 'Added to cart';
+
+    return Container(
+      width: 220,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AColors.neutral200),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x11000000),
+            blurRadius: 16,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(ASpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ASpacing.sm,
+              vertical: 2,
+            ),
+            decoration: BoxDecoration(
+              color: AColors.neutral100,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              reason,
+              style: ATypography.bodySm.copyWith(
+                color: AColors.neutral600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: ASpacing.sm),
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: ATypography.titleSm,
+          ),
+          const SizedBox(height: ASpacing.xs),
+          Text(
+            recommendation.product.sku,
+            style: ATypography.bodySm.copyWith(
+              color: AColors.mutedForeground,
+            ),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(cartControllerProvider.notifier)
+                      .addVariant(recommendation.variant);
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(content: Text(addedMessage)));
+                } on Object catch (error) {
+                  if (!context.mounted) {
+                    return;
+                  }
+                  _handleError(context, error);
+                }
+              },
+              child: Text(addLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _recommendationDisplayName(Product product, Locale locale) {
+  if (locale.languageCode == 'he') {
+    return product.nameHe.isNotEmpty ? product.nameHe : product.nameEn;
+  }
+  return product.nameEn.isNotEmpty ? product.nameEn : product.nameHe;
+}
+
+String _fallbackRecommendationReason(CatalogRecommendationReason reason) {
+  switch (reason) {
+    case CatalogRecommendationReason.fastDelivery:
+      return 'Fast delivery';
+    case CatalogRecommendationReason.lowMoq:
+      return 'Low MOQ';
+    case CatalogRecommendationReason.smallPack:
+      return 'Small pack';
+    case CatalogRecommendationReason.defaultReason:
+      return 'Suggested';
+  }
 }
 
 bool _isLineNotInCatalog(

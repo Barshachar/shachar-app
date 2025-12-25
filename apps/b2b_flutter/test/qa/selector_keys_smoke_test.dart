@@ -1,12 +1,17 @@
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/features/billing/presentation/open_debts_page.dart';
+import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
 import 'package:ashachar_marketplace/src/features/lists/presentation/saved_lists_page.dart';
+import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/reorder_page.dart';
 import 'package:ashachar_marketplace/src/features/promotions/presentation/promotions_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../quick_order/quick_order_test_utils.dart'
+    show FakeCatalogRepository, FakeOrdersRepository;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -124,6 +129,8 @@ void main() {
           promotionsProvider.overrideWith(
             (ref) async => <PromotionUiModel>[promotion],
           ),
+          catalogRepositoryProvider.overrideWithValue(FakeCatalogRepository()),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
         ],
         child: buildApp(const PromotionsPage()),
       ),

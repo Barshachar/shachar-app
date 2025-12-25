@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/tokens.dart';
 import 'package:ashachar_marketplace/src/auth/user_profile_provider.dart';
+import 'package:ashachar_marketplace/src/core/errors/user_friendly_error_handler.dart';
+import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/features/customer/data/customer_company_profile_repository.dart';
 import 'package:ashachar_marketplace/src/features/customer/domain/customer_company_profile.dart';
 
@@ -26,32 +28,52 @@ class CustomerCompanyProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String title =
+        l10n?.translate('customerCompanyProfileTitle') ?? 'Customer Profile';
+    final String overviewLabel =
+        l10n?.translate('customerCompanyProfileTabOverview') ?? 'Overview';
+    final String ordersLabel =
+        l10n?.translate('customerCompanyProfileTabOrders') ?? 'Orders';
+    final String quotesLabel =
+        l10n?.translate('customerCompanyProfileTabQuotes') ?? 'Quotes';
+    final String creditLabel =
+        l10n?.translate('customerCompanyProfileTabCredit') ?? 'Credit';
+    final String contractsLabel =
+        l10n?.translate('customerCompanyProfileTabContracts') ?? 'Contracts';
+    final String comingSoon =
+        l10n?.translate('customerCompanyProfileComingSoon') ?? 'Coming soon';
+
     return DefaultTabController(
       length: 5,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: AColors.primary,
           foregroundColor: Colors.white,
-          title: const Text('Customer Profile'),
-          bottom: const TabBar(
+          title: Text(title),
+          bottom: TabBar(
             indicatorColor: Colors.white,
             isScrollable: true,
             tabs: [
-              Tab(text: 'Overview'),
-              Tab(text: 'Orders'),
-              Tab(text: 'Quotes'),
-              Tab(text: 'Credit'),
-              Tab(text: 'Contracts'),
+              Tab(text: overviewLabel),
+              Tab(text: ordersLabel),
+              Tab(text: quotesLabel),
+              Tab(text: creditLabel),
+              Tab(text: contractsLabel),
             ],
           ),
         ),
         body: TabBarView(
           children: [
             _OverviewTab(companyId: companyId),
-            const _PlaceholderTab(label: 'Orders'),
-            const _PlaceholderTab(label: 'Quotes'),
-            const _PlaceholderTab(label: 'Credit'),
-            const _PlaceholderTab(label: 'Contracts'),
+            _PlaceholderTab(label: ordersLabel, comingSoon: comingSoon),
+            _PlaceholderTab(label: quotesLabel, comingSoon: comingSoon),
+            _PlaceholderTab(label: creditLabel, comingSoon: comingSoon),
+            _PlaceholderTab(label: contractsLabel, comingSoon: comingSoon),
           ],
         ),
       ),
@@ -66,13 +88,26 @@ class _OverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String errorMessage =
+        l10n?.translate('customerCompanyProfileLoadError') ??
+            'Unable to load profile';
     final AsyncValue<CustomerCompanyProfile> profileAsync =
         ref.watch(customerCompanyProfileProvider(companyId));
 
     return profileAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object error, StackTrace stackTrace) => Center(
-        child: Text('Unable to load profile\n$error'),
+        child: Text(
+          error.userFriendlyMessage.isEmpty
+              ? errorMessage
+              : error.userFriendlyMessage,
+          textAlign: TextAlign.center,
+        ),
       ),
       data: (CustomerCompanyProfile profile) {
         return ListView(
@@ -95,18 +130,28 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String tierLabel =
+        l10n?.translate('customerCompanyProfileTierLabel') ?? 'Tier';
+    final String industryLabel =
+        l10n?.translate('customerCompanyProfileIndustryLabel') ?? 'Industry';
+    final String salesRepLabel =
+        l10n?.translate('customerCompanyProfileSalesRepLabel') ?? 'Sales Rep';
+    final String emailLabel =
+        l10n?.translate('customerCompanyProfileEmailLabel') ?? 'Email';
     return Container(
       padding: const EdgeInsets.all(ASpacing.xl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 18,
-            offset: Offset(0, 12),
-          ),
-        ],
+        color: AColors.surface,
+        borderRadius: ARadii.lg,
+        border: Border.all(
+          color: AColors.cardBorder.withValues(alpha: 0.7),
+        ),
+        boxShadow: AElevation.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,10 +195,10 @@ class _ProfileCard extends StatelessWidget {
             spacing: ASpacing.xl,
             runSpacing: ASpacing.lg,
             children: [
-              _InfoColumn(label: 'Tier', value: profile.tier),
-              _InfoColumn(label: 'Industry', value: profile.industry),
-              _InfoColumn(label: 'Sales Rep', value: profile.salesRepName),
-              _InfoColumn(label: 'Email', value: profile.salesRepEmail),
+              _InfoColumn(label: tierLabel, value: profile.tier),
+              _InfoColumn(label: industryLabel, value: profile.industry),
+              _InfoColumn(label: salesRepLabel, value: profile.salesRepName),
+              _InfoColumn(label: emailLabel, value: profile.salesRepEmail),
             ],
           ),
         ],
@@ -169,23 +214,28 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String contactTitle =
+        l10n?.translate('customerCompanyProfileContactTitle') ??
+            'Contact Details';
     return Container(
       padding: const EdgeInsets.all(ASpacing.xl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 18,
-            offset: Offset(0, 12),
-          ),
-        ],
+        color: AColors.surface,
+        borderRadius: ARadii.lg,
+        border: Border.all(
+          color: AColors.cardBorder.withValues(alpha: 0.7),
+        ),
+        boxShadow: AElevation.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Contact Details', style: ATypography.titleSm),
+          Text(contactTitle, style: ATypography.titleSm),
           const SizedBox(height: ASpacing.lg),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -271,15 +321,18 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.label});
+  const _PlaceholderTab({required this.label, required this.comingSoon});
 
   final String label;
+  final String comingSoon;
 
   @override
   Widget build(BuildContext context) {
+    final String placeholderText =
+        comingSoon.isEmpty ? label : '$label $comingSoon';
     return Center(
       child: Text(
-        '$label coming soon',
+        placeholderText,
         style: ATypography.bodyLg.copyWith(color: AColors.mutedForeground),
       ),
     );

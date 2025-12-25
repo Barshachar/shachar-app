@@ -1,5 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncValue, Ref;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,8 +8,8 @@ import 'package:ashachar_marketplace/src/core/logger/app_logger.dart';
 import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
 import 'package:offline_toolkit/offline_toolkit.dart';
 
-List<Object?> buildOfflineToolkitOverrides() {
-  return <Object?>[
+List<dynamic> buildOfflineToolkitOverrides() {
+  return [
     otDepsProvider.overrideWith((ref) {
       return OfflineToolkit.forApp(
         AppBridges(

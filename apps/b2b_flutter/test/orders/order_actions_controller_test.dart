@@ -28,6 +28,7 @@ void main() {
     createdAt: DateTime(2024, 1, 1),
     items: [
       OrderItem(
+        id: 'item-variant-a',
         variantId: 'variant-a',
         vendorCompanyId: 'vendor-1',
         qty: 2,
@@ -37,6 +38,7 @@ void main() {
         variantSku: 'SKU-A',
       ),
       OrderItem(
+        id: 'item-variant-b',
         variantId: 'variant-b',
         vendorCompanyId: 'vendor-2',
         qty: 1,
@@ -175,6 +177,7 @@ void main() {
       createdAt: DateTime(2024, 1, 1),
       items: [
         OrderItem(
+          id: 'item-zero-a',
           variantId: 'variant-a',
           vendorCompanyId: 'vendor-1',
           qty: 0,
@@ -184,6 +187,7 @@ void main() {
           variantSku: 'SKU-A',
         ),
         OrderItem(
+          id: 'item-zero-b',
           variantId: 'variant-b',
           vendorCompanyId: 'vendor-2',
           qty: 3,

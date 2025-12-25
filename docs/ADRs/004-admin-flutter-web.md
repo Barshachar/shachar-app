@@ -8,7 +8,7 @@ Phase-1 replaces the original React admin with a Flutter Web experience sharing 
 
 ## Decision
 
-- Build admin dashboards under `/app/lib/src/features/admin` using responsive layouts.
+- Build admin dashboards under `/apps/b2b_flutter/lib/src/features/admin` using responsive layouts.
 - Use the same Riverpod providers and repositories as mobile for catalog, price lists, and reporting.
 - Treat admin routing as part of the shared `go_router` configuration to keep deep-links consistent.
 

@@ -41,7 +41,14 @@ List<RouteDefinition> buildCatalogRoutes() => <RouteDefinition>[
           RouteDefinition(
             path: 'quick-order',
             name: 'quick-order',
-            builder: (context, state) => const QuickOrderPage(),
+            builder: (context, state) {
+              final String? tabParam = state.uri.queryParameters['tab'];
+              final QuickNavTab initialTab = QuickNavTab.values.firstWhere(
+                (QuickNavTab tab) => tab.name == tabParam,
+                orElse: () => QuickNavTab.quickOrder,
+              );
+              return QuickOrderPage(initialTab: initialTab);
+            },
           ),
         ],
       ),

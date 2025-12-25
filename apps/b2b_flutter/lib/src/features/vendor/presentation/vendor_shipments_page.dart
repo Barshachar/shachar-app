@@ -8,6 +8,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_keys.dart';
 
 const List<String> _shipmentStatusOptions = <String>[
@@ -166,7 +167,7 @@ class VendorShipmentsController extends AsyncNotifier<List<VendorShipment>> {
   Future<List<VendorShipment>> _fetchShipments(
     ShipmentsFilters filters,
   ) async {
-    final SupabaseClient client = Supabase.instance.client;
+    final SupabaseClient client = ref.read(supabaseClientProvider);
     final String select =
         'id,order_id,vendor_company_id,status,tracking,created_at,companies!shipments_vendor_company_id_fkey(name)';
     dynamic query = client
@@ -410,7 +411,7 @@ class _VendorShipmentsPageState extends ConsumerState<VendorShipmentsPage> {
     required String status,
     String? tracking,
   }) async {
-    final SupabaseClient client = Supabase.instance.client;
+    final SupabaseClient client = ref.read(supabaseClientProvider);
     try {
       await client.rpc<void>('rpc_update_shipment', params: <String, dynamic>{
         'p_shipment_id': shipmentId,

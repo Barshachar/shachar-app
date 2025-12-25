@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_ui_actions.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/widgets/admin_action_keys.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/widgets/admin_actions_widgets.dart';
@@ -232,7 +233,7 @@ class _AdminReportsPageState extends ConsumerState<AdminReportsPage> {
       String format, MarketplaceLocalizations? l10n) async {
     setState(() => _loading = true);
     try {
-      final SupabaseClient client = Supabase.instance.client;
+      final SupabaseClient client = ref.read(supabaseClientProvider);
       final FunctionResponse response = await client.functions.invoke(
         'report_generator',
         body: {

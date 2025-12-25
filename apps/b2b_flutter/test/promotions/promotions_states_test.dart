@@ -1,9 +1,13 @@
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
+import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/promotions/presentation/promotions_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../quick_order/quick_order_test_utils.dart'
+    show FakeCatalogRepository, FakeOrdersRepository;
 import '../test_harness.dart';
 
 void main() {
@@ -18,6 +22,8 @@ void main() {
           promotionsProvider.overrideWithValue(
             const AsyncValue<List<PromotionUiModel>>.loading(),
           ),
+          catalogRepositoryProvider.overrideWithValue(FakeCatalogRepository()),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
         ],
         extraDelegates: const [_FakeMarketplaceLocalizationsDelegate()],
       ),
@@ -41,6 +47,8 @@ void main() {
           promotionsProvider.overrideWithValue(
             const AsyncValue<List<PromotionUiModel>>.data(<PromotionUiModel>[]),
           ),
+          catalogRepositoryProvider.overrideWithValue(FakeCatalogRepository()),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
         ],
         extraDelegates: const [_FakeMarketplaceLocalizationsDelegate()],
       ),
@@ -71,6 +79,8 @@ void main() {
               StackTrace.current,
             ),
           ),
+          catalogRepositoryProvider.overrideWithValue(FakeCatalogRepository()),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
         ],
         extraDelegates: const [_FakeMarketplaceLocalizationsDelegate()],
       ),

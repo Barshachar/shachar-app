@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/localization/generated/app_localizations.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/order_models.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/orders_controller.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/widgets/order_status_chip.dart';
@@ -16,26 +17,46 @@ class OrdersPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final MarketplaceLocalizations? l10n =
+    final MarketplaceLocalizations? legacyL10n =
         Localizations.of<MarketplaceLocalizations>(
       context,
       MarketplaceLocalizations,
     );
+    final AppLocalizations? l10n =
+        Localizations.of<AppLocalizations>(context, AppLocalizations);
     final AsyncValue<List<OrderSummary>> ordersAsync =
         ref.watch(ordersControllerProvider);
+    final String ordersTitle =
+        l10n?.ordersTitle ?? legacyL10n?.translate('ordersTitle') ?? 'Orders';
+    final String ordersRfqsTooltip = l10n?.ordersRfqsTooltip ??
+        legacyL10n?.translate('ordersRfqsTooltip') ??
+        'Requests for quotes';
+    final String ordersError = l10n?.ordersError ??
+        legacyL10n?.translate('ordersError') ??
+        'Failed to load orders';
+    final String ordersRetry = l10n?.ordersRetry ??
+        legacyL10n?.translate('ordersRetry') ??
+        'Try again';
+    final String ordersEmptyTitle = l10n?.ordersEmptyTitle ??
+        legacyL10n?.translate('ordersEmptyTitle') ??
+        'No orders yet';
+    final String ordersEmptyMessage = l10n?.ordersEmptyMessage ??
+        legacyL10n?.translate('ordersEmptyMessage') ??
+        'After you place orders you will see them here.';
+    final String ordersEmptyCta = l10n?.ordersEmptyCta ??
+        legacyL10n?.translate('ordersEmptyCta') ??
+        'Go to catalog';
 
     return Scaffold(
       key: const ValueKey('orders_list_root'),
       appBar: AppBar(
-        title: Text(l10n?.translate('ordersTitle') ?? 'Orders'),
+        title: Text(ordersTitle),
         actions: [
           Semantics(
-            label:
-                l10n?.translate('ordersRfqsTooltip') ?? 'Requests for quotes',
+            label: ordersRfqsTooltip,
             button: true,
             child: IconButton(
-              tooltip:
-                  l10n?.translate('ordersRfqsTooltip') ?? 'Requests for quotes',
+              tooltip: ordersRfqsTooltip,
               icon: const Icon(Icons.request_quote_outlined),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -56,10 +77,9 @@ class OrdersPage extends ConsumerWidget {
                 loading: () => const _OrdersLoading(),
                 error: (Object error, _) => AStateMessage(
                   icon: Icons.error_outline,
-                  title:
-                      l10n?.translate('ordersError') ?? 'Failed to load orders',
+                  title: ordersError,
                   message: error.toString(),
-                  primaryLabel: l10n?.translate('ordersRetry') ?? 'Try again',
+                  primaryLabel: ordersRetry,
                   onPrimaryPressed: () =>
                       ref.invalidate(ordersControllerProvider),
                 ),
@@ -74,12 +94,9 @@ class OrdersPage extends ConsumerWidget {
                           children: [
                             AStateMessage(
                               icon: Icons.receipt_long_outlined,
-                              title: l10n?.translate('ordersEmptyTitle') ??
-                                  'No orders yet',
-                              message: l10n?.translate('ordersEmptyMessage') ??
-                                  'After you place orders you will see them here.',
-                              primaryLabel: l10n?.translate('ordersEmptyCta') ??
-                                  'Go to catalog',
+                              title: ordersEmptyTitle,
+                              message: ordersEmptyMessage,
+                              primaryLabel: ordersEmptyCta,
                               onPrimaryPressed: () => context.go('/catalog'),
                             ),
                           ],
@@ -87,6 +104,7 @@ class OrdersPage extends ConsumerWidget {
                       : _OrdersList(
                           orders: orders,
                           l10n: l10n,
+                          legacyL10n: legacyL10n,
                         ),
                 ),
               ),
@@ -99,10 +117,15 @@ class OrdersPage extends ConsumerWidget {
 }
 
 class _OrdersList extends StatelessWidget {
-  const _OrdersList({required this.orders, required this.l10n});
+  const _OrdersList({
+    required this.orders,
+    required this.l10n,
+    required this.legacyL10n,
+  });
 
   final List<OrderSummary> orders;
-  final MarketplaceLocalizations? l10n;
+  final AppLocalizations? l10n;
+  final MarketplaceLocalizations? legacyL10n;
 
   @override
   Widget build(BuildContext context) {
@@ -152,14 +175,15 @@ class _OrdersList extends StatelessWidget {
                         ),
                         OrderStatusChip(
                           status: order.status,
-                          l10n: l10n,
+                          l10n: legacyL10n,
                           compact: true,
                         ),
                       ],
                     ),
                     const SizedBox(height: ASpacing.md),
                     ALabeledValue(
-                      label: l10n?.translate('orderDetailCreatedAt') ??
+                      label: l10n?.orderDetailCreatedAt ??
+                          legacyL10n?.translate('orderDetailCreatedAt') ??
                           'Created at',
                       value: createdLabel,
                       icon: const Icon(
@@ -170,7 +194,9 @@ class _OrdersList extends StatelessWidget {
                     ),
                     const SizedBox(height: ASpacing.sm),
                     ALabeledValue(
-                      label: l10n?.translate('orderDetailTotal') ?? 'Total',
+                      label: l10n?.orderDetailTotal ??
+                          legacyL10n?.translate('orderDetailTotal') ??
+                          'Total',
                       value: totalLabel,
                       icon: const Icon(
                         Icons.payments_outlined,
@@ -207,23 +233,31 @@ class _OrdersList extends StatelessWidget {
                   columns: <DataColumn>[
                     DataColumn(
                       label: Text(
-                        l10n?.translate('ordersTableOrder') ?? 'Order',
+                        l10n?.ordersTableOrder ??
+                            legacyL10n?.translate('ordersTableOrder') ??
+                            'Order',
                       ),
                     ),
                     DataColumn(
                       label: Text(
-                        l10n?.translate('ordersTableCreated') ?? 'Created',
+                        l10n?.ordersTableCreated ??
+                            legacyL10n?.translate('ordersTableCreated') ??
+                            'Created',
                       ),
                     ),
                     DataColumn(
                       label: Text(
-                        l10n?.translate('ordersTableStatus') ?? 'Status',
+                        l10n?.ordersTableStatus ??
+                            legacyL10n?.translate('ordersTableStatus') ??
+                            'Status',
                       ),
                     ),
                     DataColumn(
                       numeric: true,
                       label: Text(
-                        l10n?.translate('ordersTableTotal') ?? 'Total',
+                        l10n?.ordersTableTotal ??
+                            legacyL10n?.translate('ordersTableTotal') ??
+                            'Total',
                       ),
                     ),
                   ],
@@ -243,7 +277,7 @@ class _OrdersList extends StatelessWidget {
                         DataCell(Text(createdLabel, style: ATypography.bodySm)),
                         DataCell(OrderStatusChip(
                           status: order.status,
-                          l10n: l10n,
+                          l10n: legacyL10n,
                           compact: true,
                         )),
                         DataCell(

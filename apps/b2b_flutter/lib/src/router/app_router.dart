@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'package:ashachar_marketplace/src/app/app_state.dart';
+import 'package:ashachar_marketplace/src/app/theme/tokens.dart';
 import 'package:ashachar_marketplace/src/auth/auth_models.dart';
 import 'package:ashachar_marketplace/src/auth/user_profile_provider.dart';
 import 'package:ashachar_marketplace/src/router/guards/auth_guards.dart';
@@ -164,7 +166,9 @@ String _resolvePath(String parent, String child) {
   return '$parent/${child.replaceAll('//', '/')}';
 }
 
-final appThemeProvider = Provider<AppTheme>((ref) => AppTheme());
+final appThemeProvider = Provider<AppTheme>(
+  (ref) => AppTheme(mode: ref.watch(themeModeProvider)),
+);
 
 class LoggingNavigatorObserver extends NavigatorObserver {
   GoRouter? _router;
@@ -224,8 +228,6 @@ class LoggingNavigatorObserver extends NavigatorObserver {
   }
 }
 
-final localeProvider = StateProvider<Locale>((ref) => const Locale('he'));
-
 final loadingRoute = GoRoute(
   path: '/loading',
   name: 'loading',
@@ -233,21 +235,158 @@ final loadingRoute = GoRoute(
 );
 
 class AppTheme {
-  ThemeData get lightTheme => ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        fontFamily: 'Rubik',
-      );
+  AppTheme({required ThemeMode mode}) : _mode = mode;
 
-  ThemeData get darkTheme => ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          brightness: Brightness.dark,
+  final ThemeMode _mode;
+
+  ThemeData get lightTheme => _buildTheme(Brightness.light);
+
+  ThemeData get darkTheme => _buildTheme(Brightness.dark);
+
+  ThemeMode get mode => _mode;
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final bool isDark = brightness == Brightness.dark;
+    final ColorScheme scheme = _colorScheme(brightness);
+    final TextTheme baseTextTheme = GoogleFonts.spaceGroteskTextTheme(
+      ThemeData(brightness: brightness).textTheme,
+    ).apply(
+      bodyColor: isDark ? AColors.foregroundOnDark : AColors.foreground,
+      displayColor: isDark ? AColors.foregroundOnDark : AColors.foreground,
+    );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: isDark ? AColors.midnight : AColors.background,
+      textTheme: baseTextTheme,
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: (isDark ? AColors.midnight : AColors.background)
+            .withValues(alpha: 0.82),
+        titleTextStyle: baseTextTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : AColors.foreground,
         ),
-        fontFamily: 'Rubik',
-      );
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : AColors.foreground,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: isDark
+            ? AColors.surfaceGlassDark.withValues(alpha: 0.88)
+            : Colors.white.withValues(alpha: 0.92),
+        shadowColor: scheme.primary.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(
+          borderRadius: ARadii.lg,
+          side: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.16)
+                : AColors.cardBorder.withValues(alpha: 0.75),
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: (isDark ? Colors.white : AColors.surfaceMuted)
+            .withValues(alpha: 0.14),
+        shape: RoundedRectangleBorder(borderRadius: ARadii.md),
+        labelStyle: baseTextTheme.labelMedium?.copyWith(
+          color: isDark ? AColors.foregroundOnDark : AColors.foreground,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor:
+            isDark ? Colors.white.withValues(alpha: 0.08) : AColors.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: ASpacing.xl,
+          vertical: ASpacing.md,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: ARadii.md,
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.18)
+                : AColors.cardBorder,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: ARadii.md,
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.18)
+                : AColors.cardBorder,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: ARadii.md,
+          borderSide: BorderSide(
+            color: scheme.primary,
+            width: 1.6,
+          ),
+        ),
+        labelStyle: baseTextTheme.bodyMedium?.copyWith(
+          color:
+              isDark ? AColors.mutedForegroundOnDark : AColors.mutedForeground,
+        ),
+      ),
+      dividerColor: (isDark ? Colors.white : AColors.borderSubtle)
+          .withValues(alpha: 0.32),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: (isDark ? AColors.midnight : AColors.surface)
+            .withValues(alpha: 0.9),
+        indicatorColor: scheme.primary.withValues(alpha: 0.18),
+        labelTextStyle: WidgetStateProperty.all(
+          baseTextTheme.labelMedium?.copyWith(
+            color: isDark ? AColors.foregroundOnDark : AColors.foreground,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        shape: RoundedRectangleBorder(borderRadius: ARadii.md),
+      ),
+      listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(borderRadius: ARadii.md),
+        iconColor: scheme.primary,
+        textColor: isDark ? AColors.foregroundOnDark : AColors.foreground,
+      ),
+    );
+  }
 
-  ThemeMode get mode => ThemeMode.system;
+  ColorScheme _colorScheme(Brightness brightness) {
+    final bool isDark = brightness == Brightness.dark;
+    final ColorScheme base = ColorScheme.fromSeed(
+      seedColor: AColors.primary,
+      brightness: brightness,
+    );
+    return base.copyWith(
+      primary: AColors.primary,
+      onPrimary: Colors.black,
+      secondary: AColors.accent,
+      onSecondary: Colors.white,
+      surface: isDark ? AColors.surfaceGlassDark : AColors.surface,
+      surfaceContainerLowest: isDark ? AColors.midnight : AColors.background,
+      onSurface: isDark ? AColors.foregroundOnDark : AColors.foreground,
+      surfaceTint: AColors.primary,
+      outline:
+          isDark ? Colors.white.withValues(alpha: 0.2) : AColors.borderStrong,
+      primaryContainer: isDark ? const Color(0xFF123B3D) : AColors.primaryLight,
+      onPrimaryContainer:
+          isDark ? AColors.foregroundOnDark : AColors.foreground,
+      secondaryContainer:
+          isDark ? const Color(0xFF0F172A) : AColors.surfaceSubtle,
+      onSecondaryContainer:
+          isDark ? AColors.foregroundOnDark : AColors.foreground,
+      tertiary: AColors.accent,
+      onTertiary: Colors.white,
+      error: AColors.danger,
+      onError: Colors.white,
+    );
+  }
 }

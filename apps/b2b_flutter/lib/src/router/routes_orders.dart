@@ -1,20 +1,19 @@
 import 'package:ashachar_marketplace/src/auth/auth_models.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_page.dart';
+import 'package:ashachar_marketplace/src/features/customer/about_page.dart';
 import 'package:ashachar_marketplace/src/features/customer/customer_company_profile_page.dart';
 import 'package:ashachar_marketplace/src/features/customer/customer_home_page.dart';
 import 'package:ashachar_marketplace/src/features/customer/help_page.dart';
 import 'package:ashachar_marketplace/src/features/customer/profile_page.dart';
 import 'package:ashachar_marketplace/src/features/customer/settings_page.dart';
 import 'package:ashachar_marketplace/src/features/lists/presentation/saved_lists_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/cart_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/checkout_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/order_detail_page.dart';
-import 'package:ashachar_marketplace/src/features/orders/presentation/orders_page.dart';
+import 'package:ashachar_marketplace/src/features/orders/orders_routes.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/packing_station_page.dart';
 import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_directory_page.dart';
 import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_orders_page.dart';
 import 'package:ashachar_marketplace/src/features/vendor/presentation/vendor_products_page.dart';
 import 'package:ashachar_marketplace/src/features/inventory/presentation/putaway_map_page.dart';
+import 'package:ashachar_marketplace/src/core/onboarding/onboarding_gate.dart';
 import 'package:ashachar_marketplace/src/router/guards/auth_guards.dart';
 import 'package:ashachar_marketplace/src/router/route_config.dart';
 
@@ -27,37 +26,11 @@ List<RouteDefinition> buildOrderRoutes() => <RouteDefinition>[
           requireCompany(),
           requireRoles({UserRole.customerAdmin, UserRole.buyer}),
         ],
-        builder: (context, state) => const CustomerHomePage(),
+        builder: (context, state) => const OnboardingGate(
+          child: CustomerHomePage(),
+        ),
         routes: <RouteDefinition>[
-          RouteDefinition(
-            path: 'cart',
-            name: 'cart',
-            builder: (context, state) => const CartPage(),
-            routes: <RouteDefinition>[
-              RouteDefinition(
-                path: 'checkout',
-                name: 'checkout',
-                builder: (context, state) {
-                  final String orderId = (state.extra as String?) ?? '';
-                  return CheckoutPage(orderId: orderId);
-                },
-              ),
-            ],
-          ),
-          RouteDefinition(
-            path: 'orders',
-            name: 'customer-orders',
-            builder: (context, state) => const OrdersPage(),
-            routes: <RouteDefinition>[
-              RouteDefinition(
-                path: ':id',
-                name: 'order-detail',
-                builder: (context, state) => OrderDetailPage(
-                  orderId: state.pathParameters['id']!,
-                ),
-              ),
-            ],
-          ),
+          ...buildCustomerOrdersRoutes(),
           RouteDefinition(
             path: 'approvals',
             name: 'customer-approvals',
@@ -90,6 +63,11 @@ List<RouteDefinition> buildOrderRoutes() => <RouteDefinition>[
             path: 'help',
             name: 'help',
             builder: (context, state) => const HelpPage(),
+          ),
+          RouteDefinition(
+            path: 'about',
+            name: 'about',
+            builder: (context, state) => const AboutPage(),
           ),
         ],
       ),

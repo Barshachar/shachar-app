@@ -1,11 +1,13 @@
 import 'package:ashachar_marketplace/src/app/theme/components.dart';
 import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repository.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_page.dart';
+import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes/fake_catalog_repository.dart';
 import 'fakes/fake_price_service.dart';
+import 'quick_order/quick_order_test_utils.dart' show FakeOrdersRepository;
 import 'test_harness.dart';
 
 void main() {
@@ -16,6 +18,7 @@ void main() {
         const CatalogPage(),
         overrides: [
           catalogRepositoryProvider.overrideWithValue(FakeCatalogRepository()),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
           priceResolutionServiceProvider.overrideWithValue(
             FakePriceResolutionService(
               onResolve: ({

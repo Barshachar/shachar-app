@@ -45,6 +45,7 @@ void main() {
   test('ensureDraftOrder only creates draft once', () async {
     final CartController controller =
         container.read(cartControllerProvider.notifier);
+    repository.createDraftCalls = 0; // ignore warmup call
 
     final String id1 = await controller.ensureDraftOrder();
     final String id2 = await controller.ensureDraftOrder();
@@ -57,6 +58,7 @@ void main() {
   test('addVariant aggregates qty via repository', () async {
     final CartController controller =
         container.read(cartControllerProvider.notifier);
+    repository.createDraftCalls = 0; // ignore warmup call
 
     await controller.addVariant(variant, qty: 2);
     await controller.addVariant(variant, qty: 1);
@@ -69,6 +71,7 @@ void main() {
   test('addBySkuOrBarcode finds variant by sku', () async {
     final CartController controller =
         container.read(cartControllerProvider.notifier);
+    repository.createDraftCalls = 0; // ignore warmup call
 
     await controller.addBySkuOrBarcode('SKU-1', qty: 2);
 
@@ -81,6 +84,7 @@ void main() {
   test('updateLineQty with zero deletes line', () async {
     final CartController controller =
         container.read(cartControllerProvider.notifier);
+    repository.createDraftCalls = 0; // ignore warmup call
 
     await controller.addVariant(variant, qty: 1);
     final _FakeLine line = repository.lineForVariant('variant-1');
@@ -130,6 +134,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    repository.createDraftCalls = 0; // ignore warmup call
 
     final String orderId =
         await controller.submitDraftAndNavigate(capturedContext);
@@ -179,12 +184,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    retryRepository.createDraftCalls = 0; // ignore warmup call
 
     final String orderId =
         await controller.submitDraftAndNavigate(capturedContext);
 
     expect(orderId, 'submitted-${retryRepository.lastDraftId}');
-    expect(retryRepository.createDraftCalls, 2);
+    expect(retryRepository.createDraftCalls, 1);
     expect(retryRepository.submitDraftCalls, 2);
     expect(router.routeInformationProvider.value.uri.toString(),
         '/customer/orders/submitted-${retryRepository.lastDraftId}');

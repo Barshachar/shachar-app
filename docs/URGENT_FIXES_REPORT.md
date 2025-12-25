@@ -23,7 +23,7 @@
 
 ### 1. עמוד Profile - ✅ תוקן
 
-**קובץ חדש**: `app/lib/src/features/customer/profile_page.dart`
+**קובץ חדש**: `apps/b2b_flutter/lib/src/features/customer/profile_page.dart`
 
 **מה נוצר:**
 - עמוד פרופיל מלא עם פרטי משתמש
@@ -41,7 +41,7 @@
 
 ### 2. עמוד Settings - ✅ תוקן
 
-**קובץ חדש**: `app/lib/src/features/customer/settings_page.dart`
+**קובץ חדש**: `apps/b2b_flutter/lib/src/features/customer/settings_page.dart`
 
 **מה נוצר:**
 - עמוד הגדרות מקיף
@@ -65,7 +65,7 @@
 
 ### 3. עמוד Help - ✅ תוקן
 
-**קובץ חדש**: `app/lib/src/features/customer/help_page.dart`
+**קובץ חדש**: `apps/b2b_flutter/lib/src/features/customer/help_page.dart`
 
 **מה נוצר:**
 - מרכז עזרה מקצועי
@@ -91,7 +91,7 @@
 
 ### 4. עמוד אישורים - ✅ תוקן
 
-**קובץ**: `app/lib/src/features/approvals/presentation/approvals_inbox_provider.dart`
+**קובץ**: `apps/b2b_flutter/lib/src/features/approvals/presentation/approvals_inbox_provider.dart`
 
 **הבעיה:**
 - RPC call ל-`rpc_approvals_inbox` נתקע ללא timeout
@@ -119,7 +119,7 @@ final dynamic response = await client
 
 ### 5. עמוד מבצעים - ✅ כבר תקין
 
-**קובץ**: `app/lib/src/features/promotions/presentation/promotions_page.dart`
+**קובץ**: `apps/b2b_flutter/lib/src/features/promotions/presentation/promotions_page.dart`
 
 **בדיקה:**
 - העמוד כבר כולל כפתור חזרה ב-AppBar
@@ -145,7 +145,7 @@ appBar: AppBar(
 
 ## 🔧 עדכון Router
 
-**קובץ**: `app/lib/src/router/app_router.dart`
+**קובץ**: `apps/b2b_flutter/lib/src/router/app_router.dart`
 
 **שינויים:**
 1. הוספת imports:
@@ -179,13 +179,13 @@ appBar: AppBar(
 ## 📊 סיכום קבצים שנוצרו/שונו
 
 ### קבצים חדשים (3):
-1. ✅ `app/lib/src/features/customer/profile_page.dart` (189 שורות)
-2. ✅ `app/lib/src/features/customer/settings_page.dart` (280 שורות)
-3. ✅ `app/lib/src/features/customer/help_page.dart` (347 שורות)
+1. ✅ `apps/b2b_flutter/lib/src/features/customer/profile_page.dart` (189 שורות)
+2. ✅ `apps/b2b_flutter/lib/src/features/customer/settings_page.dart` (280 שורות)
+3. ✅ `apps/b2b_flutter/lib/src/features/customer/help_page.dart` (347 שורות)
 
 ### קבצים ששונו (2):
-1. ✅ `app/lib/src/router/app_router.dart` (הוספת imports + routes)
-2. ✅ `app/lib/src/features/approvals/presentation/approvals_inbox_provider.dart` (timeout)
+1. ✅ `apps/b2b_flutter/lib/src/router/app_router.dart` (הוספת imports + routes)
+2. ✅ `apps/b2b_flutter/lib/src/features/approvals/presentation/approvals_inbox_provider.dart` (timeout)
 
 **סה"כ קבצים**: 5  
 **סה"כ שורות קוד חדשות**: ~850  

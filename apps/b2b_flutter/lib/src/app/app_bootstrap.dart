@@ -1,8 +1,13 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:ashachar_marketplace/src/app/app_state.dart';
 import 'package:ashachar_marketplace/src/auth/auth_resilience.dart';
 import 'package:ashachar_marketplace/src/core/config/app_config.dart';
 import 'package:ashachar_marketplace/src/core/logger/app_logger.dart';
@@ -16,6 +21,7 @@ class AppBootstrap {
 
   Future<void> initialize() async {
     final config = await container.read(appConfigProvider.future);
+    await _hydrateLocalPreferences();
     await Supabase.initialize(
       url: config.supabaseUrl,
       anonKey: config.supabaseAnonKey,
@@ -29,6 +35,17 @@ class AppBootstrap {
     await container.read(offlineCacheManagerProvider).initialize();
     await container.read(syncSchedulerProvider).initialize();
     await container.read(sessionControllerProvider.notifier).hydrate();
+  }
+
+  Future<void> _hydrateLocalPreferences() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? savedLocale = prefs.getString(appLocalePreferenceKey);
+    container.read<StateController<Locale>>(localeProvider.notifier).state =
+        localeFromPreference(savedLocale);
+    final String? savedTheme = prefs.getString(appThemeModePreferenceKey);
+    container
+        .read<StateController<ThemeMode>>(themeModeProvider.notifier)
+        .state = themeModeFromPreference(savedTheme);
   }
 
   Future<void> _ensureDemoSession(AppConfig config) async {

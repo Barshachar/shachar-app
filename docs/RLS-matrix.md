@@ -7,16 +7,20 @@
 | categories / attributes |  RW   |             R              |           R            | Read-only for non-admin (global catalog) |
 | products                |  RW   |             RW             |           R            | Vendors limited to their `vendor_company_id`; customers active only |
 | product_variants        |  RW   |             RW             |           R            | Similar to products |
-| inventory               |  RW   |             RW             |           R            | Customers read-only, vendor RW on own variants |
+| inventory               |  RW   |             RW             |           -            | Vendor RW on own variants; customers no direct access |
 | price_lists / prices    |  RW   |             RW             |           R            | Customers see global + targeted lists |
 | mv_effective_prices     |  R*   |             R*             |           R*           | Accessed via `secure_effective_prices` view |
 | orders                  |  RW   |             R              |           RW           | Vendors view orders containing their items |
 | order_items             |  RW   |             RW             |           R            | Customer scope via parent order |
 | shipments               |  RW   |             RW             |           R            | |
-| returns                 |  RW   |             -              |           -            | Disabled via feature flag |
+| vendor_ratings          |  RW   |             R              |           RW           | Customers write/read own; vendors read own |
+| vendor_rating_summary   |  R    |             R              |           R            | Aggregated view for buyer/vendor display |
+| returns                 |  RW   |             R              |           RW           | Customers request returns; vendors read own items |
+| approval_requests       |  RW   |             -              |           RW           | Approver updates only; scoped by `company_id` |
+| order_approvals_inbox   |  R    |             -              |           R            | View filtered to pending approver assignments |
 | attachments             |  RW   |             W (own)        |           W (own)      | Creator-scoped writes |
 | notifications           |  RW   |             W (own)        |           W (own)      | User scoped |
-| audit_log               |  RW   |             -              |           -            | Admin-only audit access |
+| audit_log               |  RW   |             -              |           R            | Customers read order audit entries for their company |
 
 `R*` indicates the secure view applies row filters instead of table-level policies (materialized view).
 

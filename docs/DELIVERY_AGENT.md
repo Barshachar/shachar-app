@@ -60,8 +60,8 @@ and (when requested) bash ./scripts/qa-run.sh ends PASS or WARN (429 only).
 
 ### Sprint A — ייצוב בדיקות (חובה לפני הכל)
 **ALLOWED:**  
-`app/lib/src/features/customer/customer_home_page.dart`,  
-`app/lib/src/features/orders/presentation/checkout_page.dart`,  
+`apps/b2b_flutter/lib/src/features/customer/customer_home_page.dart`,  
+`apps/b2b_flutter/lib/src/features/orders/presentation/checkout_page.dart`,  
 `app/test/auth/login_page_test.dart`, `app/test/orders/checkout_page_test.dart`
 
 **TASKS:**
@@ -74,8 +74,8 @@ and (when requested) bash ./scripts/qa-run.sh ends PASS or WARN (429 only).
 
 ### Sprint B — Pricing (UI/Service) ↔ SQL
 **ALLOWED:**  
-`app/lib/src/features/pricing/**`,  
-`app/lib/src/features/catalog/presentation/**`,  
+`apps/b2b_flutter/lib/src/features/pricing/**`,  
+`apps/b2b_flutter/lib/src/features/catalog/presentation/**`,  
 `app/assets/translations/*.arb`  
 **FORBIDDEN:** Repos.
 
@@ -90,7 +90,7 @@ and (when requested) bash ./scripts/qa-run.sh ends PASS or WARN (429 only).
 
 ### Sprint C — Approvals (UI) ↔ SQL
 **ALLOWED:**  
-`app/lib/src/features/approvals/presentation/**`, `app/lib/src/features/orders/presentation/**`  
+`apps/b2b_flutter/lib/src/features/approvals/presentation/**`, `apps/b2b_flutter/lib/src/features/orders/presentation/**`  
 **TASKS:**  
 - Checkout/Order‑Detail: באנר “ממתין לאישור” + “שלח לאישור” → `rpc_evaluate_approvals`.  
 - Approver Inbox: רשימה + “אשר/דחה” → `rpc_approve_step`.  
@@ -101,7 +101,7 @@ and (when requested) bash ./scripts/qa-run.sh ends PASS or WARN (429 only).
 
 ### Sprint D — RFQ/Quotes (UI) ↔ SQL
 **ALLOWED:**  
-`app/lib/src/features/rfq/presentation/**`, `app/lib/src/features/orders/presentation/**`  
+`apps/b2b_flutter/lib/src/features/rfq/presentation/**`, `apps/b2b_flutter/lib/src/features/orders/presentation/**`  
 **TASKS:**  
 - “בקשת הצעת מחיר” מהעגלה/מוצר → `rpc_create_rfq`.  
 - Vendor Quote form → `rpc_vendor_submit_quote`.  

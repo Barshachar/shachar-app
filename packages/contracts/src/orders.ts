@@ -35,6 +35,9 @@ export type OrderDto = {
   updatedAt: string;
   createdBy: string;
   deliveryWindow?: DbOrderRow['delivery_window'];
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
   items: OrderItemDto[];
 };
 
@@ -70,6 +73,9 @@ export function fromDbOrderRow(
     updatedAt: row.updated_at,
     createdBy: row.created_by,
     deliveryWindow: row.delivery_window ?? undefined,
+    cancelledAt: row.cancelled_at ?? undefined,
+    cancelledBy: row.cancelled_by ?? undefined,
+    cancellationReason: row.cancellation_reason ?? undefined,
     items: items.map(fromDbOrderItemRow)
   };
 }

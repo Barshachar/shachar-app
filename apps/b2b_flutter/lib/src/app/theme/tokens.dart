@@ -4,41 +4,52 @@ import 'package:flutter/material.dart';
 class AColors {
   AColors._();
 
-  static const Color primary = Color(0xFFC93A2F);
-  static const Color primaryDark = Color(0xFFA62F26);
-  static const Color primaryLight = Color(0xFFF2D6D3);
-  static const Color primaryMuted = Color(0xFFF8E6E3);
+  static const Color primary = Color(0xFF0CECDD);
+  static const Color primaryDark = Color(0xFF06B6B8);
+  static const Color primaryLight = Color(0xFFD5FFFB);
+  static const Color primaryMuted = Color(0xFFEAFFFC);
 
-  static const Color accent = Color(0xFF2563EB);
+  static const Color accent = Color(0xFF1D9BF0);
 
-  static const Color foreground = Color(0xFF111827);
-  static const Color mutedForeground = Color(0xFF6B7280);
+  static const Color foreground = Color(0xFF0B1224);
+  static const Color mutedForeground = Color(0xFF6B7287);
 
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF3F5F4);
-  static const Color surfaceSubtle = Color(0xFFE8ECE8);
-  static const Color background = Color(0xFFF7F9F7);
-  static const Color authBackgroundStart = Color(0xFFF8F0EE);
-  static const Color authBackgroundEnd = Color(0xFFFDF9F8);
+  static const Color surface = Color(0xFFF9FBFF);
+  static const Color surfaceMuted = Color(0xFFF0F4FB);
+  static const Color surfaceSubtle = Color(0xFFE2E8F6);
+  static const Color background = Color(0xFFF4F7FD);
+  static const Color authBackgroundStart = Color(0xFF0C1226);
+  static const Color authBackgroundEnd = Color(0xFF0F1D36);
 
-  static const Color borderSubtle = Color(0xFFE5E7EB);
-  static const Color borderStrong = Color(0xFFCBD2D9);
-  static const Color cardBorder = Color(0xFFD9E0E5);
+  static const Color borderSubtle = Color(0xFFE4E9F2);
+  static const Color borderStrong = Color(0xFFC7D4E8);
+  static const Color cardBorder = Color(0xFFB6C6DE);
 
-  static const Color neutral100 = Color(0xFFFBFBFB);
-  static const Color neutral200 = Color(0xFFEFF1F3);
-  static const Color neutral300 = Color(0xFFD7DDE2);
-  static const Color neutral400 = Color(0xFF9CA3AF);
+  static const Color neutral100 = Color(0xFFF7F9FC);
+  static const Color neutral200 = Color(0xFFE6EDF6);
+  static const Color neutral300 = Color(0xFFC7D2E4);
+  static const Color neutral400 = Color(0xFF96A3BC);
   static const Color neutral500 = Color(0xFF6B7280);
-  static const Color neutral600 = Color(0xFF4B5563);
-  static const Color neutral900 = Color(0xFF111827);
+  static const Color neutral600 = Color(0xFF4B5565);
+  static const Color neutral900 = Color(0xFF0B1224);
 
-  static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFD97706);
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFEAB308);
   static const Color danger = Color(0xFFDC2626);
   static const Color info = Color(0xFF2563EB);
   static const Color dangerSurface = Color(0xFFFEE2E2);
   static const Color dangerBorder = Color(0xFFFCA5A5);
+
+  static const Color midnight = Color(0xFF080F1F);
+  static const Color midnightDeep = Color(0xFF060A14);
+  static const Color auroraBlue = Color(0xFF00B5FF);
+  static const Color auroraCyan = Color(0xFF00F5D4);
+  static const Color auroraLime = Color(0xFFC8FF70);
+  static const Color glassOverlay = Color(0x66FFFFFF);
+
+  static const Color foregroundOnDark = Color(0xFFF4F7FD);
+  static const Color mutedForegroundOnDark = Color(0xFFCBD7EC);
+  static const Color surfaceGlassDark = Color(0xFF0F1D36);
 }
 
 class ASpacing {

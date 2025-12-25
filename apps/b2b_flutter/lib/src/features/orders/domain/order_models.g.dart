@@ -24,6 +24,7 @@ Map<String, dynamic> _$OrderSummaryToJson(OrderSummary instance) =>
     };
 
 OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => OrderItem(
+      id: json['id'] as String,
       variantId: json['variantId'] as String,
       vendorCompanyId: json['vendorCompanyId'] as String,
       qty: (json['qty'] as num).toDouble(),
@@ -34,6 +35,7 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => OrderItem(
     );
 
 Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
+      'id': instance.id,
       'variantId': instance.variantId,
       'vendorCompanyId': instance.vendorCompanyId,
       'qty': instance.qty,
@@ -57,6 +59,11 @@ OrderDetail _$OrderDetailFromJson(Map<String, dynamic> json) => OrderDetail(
       shipments: (json['shipments'] as List<dynamic>)
           .map((e) => OrderShipment.fromJson(e as Map<String, dynamic>))
           .toList(),
+      cancelledAt: json['cancelledAt'] == null
+          ? null
+          : DateTime.parse(json['cancelledAt'] as String),
+      cancelledBy: json['cancelledBy'] as String?,
+      cancellationReason: json['cancellationReason'] as String?,
     );
 
 Map<String, dynamic> _$OrderDetailToJson(OrderDetail instance) =>
@@ -70,6 +77,9 @@ Map<String, dynamic> _$OrderDetailToJson(OrderDetail instance) =>
       'createdAt': instance.createdAt.toIso8601String(),
       'items': instance.items,
       'shipments': instance.shipments,
+      'cancelledAt': instance.cancelledAt?.toIso8601String(),
+      'cancelledBy': instance.cancelledBy,
+      'cancellationReason': instance.cancellationReason,
     };
 
 OrderShipment _$OrderShipmentFromJson(Map<String, dynamic> json) =>

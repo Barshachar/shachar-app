@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -66,7 +67,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
     final head = await client
         .from('orders')
         .select(
-            'id, order_number, status, subtotal, tax_total, total, created_at')
+            'id, order_number, status, subtotal, tax_total, total, created_at, cancelled_at, cancelled_by, cancellation_reason')
         .eq('id', orderId)
         .single();
     final dynamic itemsResponse = await client
@@ -105,6 +106,11 @@ class SupabaseOrdersRepository implements OrdersRepository {
       createdAt: DateTime.parse(head['created_at'] as String),
       items: items,
       shipments: shipments,
+      cancelledAt: head['cancelled_at'] != null
+          ? DateTime.parse(head['cancelled_at'] as String)
+          : null,
+      cancelledBy: head['cancelled_by'] as String?,
+      cancellationReason: head['cancellation_reason'] as String?,
     );
   }
 
@@ -153,58 +159,73 @@ class SupabaseOrdersRepository implements OrdersRepository {
     required String variantId,
     required double qty,
   }) async {
-    final dynamic existing = await client
-        .from('order_items')
-        .select('id, qty')
-        .eq('order_id', orderId)
-        .eq('variant_id', variantId)
-        .maybeSingle();
+    debugPrint(
+        '[CART] addLineToOrder order=$orderId variant=$variantId qty=$qty');
+    try {
+      final dynamic existing = await client
+          .from('order_items')
+          .select('id, qty')
+          .eq('order_id', orderId)
+          .eq('variant_id', variantId)
+          .maybeSingle();
 
-    if (existing is Map<String, dynamic>) {
-      final double currentQty = _toDouble(existing['qty']);
-      final String existingId = existing['id'] as String;
-      await updateLineQty(orderItemId: existingId, qty: currentQty + qty);
-      return;
+      if (existing is Map<String, dynamic>) {
+        final double currentQty = _toDouble(existing['qty']);
+        final String existingId = existing['id'] as String;
+        await updateLineQty(orderItemId: existingId, qty: currentQty + qty);
+        return;
+      }
+
+      final dynamic variantRow = await client
+          .from('product_variants')
+          .select('id,uom,products!inner(vendor_company_id)')
+          .eq('id', variantId)
+          .maybeSingle();
+
+      if (variantRow is! Map) {
+        throw StateError('Variant not found: $variantId');
+      }
+
+      final Map<String, dynamic> variantMap = _stringKeyMap(variantRow);
+      final Map<String, dynamic> productMap =
+          _stringKeyMap(variantMap['products']);
+      final String? vendorCompanyId =
+          productMap['vendor_company_id'] as String?;
+      if (vendorCompanyId == null || vendorCompanyId.isEmpty) {
+        throw StateError('Variant $variantId missing vendor_company_id');
+      }
+      final String uom = (variantMap['uom'] as String?) ?? 'EA';
+
+      await client.from('order_items').insert(<String, dynamic>{
+        'order_id': orderId,
+        'vendor_company_id': vendorCompanyId,
+        'variant_id': variantId,
+        'qty': qty,
+        'uom': uom,
+        'unit_price': 0,
+        'discount_pct': 0,
+        'tax_rate': 17.0,
+      });
+      debugPrint(
+          '[CART] addLineToOrder inserted variant=$variantId order=$orderId');
+    } on PostgrestException catch (e) {
+      debugPrint(
+          '[CART][ERROR] addLineToOrder PG error: ${e.message} code=${e.code}');
+      rethrow;
+    } catch (e) {
+      debugPrint('[CART][ERROR] addLineToOrder error: $e');
+      rethrow;
     }
-
-    final dynamic variantRow = await client
-        .from('product_variants')
-        .select('id,uom,products!inner(vendor_company_id)')
-        .eq('id', variantId)
-        .maybeSingle();
-
-    if (variantRow is! Map) {
-      throw StateError('Variant not found: $variantId');
-    }
-
-    final Map<String, dynamic> variantMap = _stringKeyMap(variantRow);
-    final Map<String, dynamic> productMap =
-        _stringKeyMap(variantMap['products']);
-    final String? vendorCompanyId = productMap['vendor_company_id'] as String?;
-    if (vendorCompanyId == null || vendorCompanyId.isEmpty) {
-      throw StateError('Variant $variantId missing vendor_company_id');
-    }
-    final String uom = (variantMap['uom'] as String?) ?? 'EA';
-
-    await client.from('order_items').insert(<String, dynamic>{
-      'order_id': orderId,
-      'vendor_company_id': vendorCompanyId,
-      'variant_id': variantId,
-      'qty': qty,
-      'uom': uom,
-      'unit_price': 0,
-      'discount_pct': 0,
-      'tax_rate': 17.0,
-    });
   }
 
   @override
   Future<List<CartLine>> fetchCartLines(String orderId) async {
+    debugPrint('[CART] fetchCartLines order=$orderId');
     final dynamic response = await client
         .from('order_items')
         .select(
           'id, order_id, vendor_company_id, variant_id, qty, unit_price, line_total,'
-          ' product_variants!inner(sku, attributes_json, products!inner(name))',
+          ' product_variants!left(sku, attributes_json, products!left(name))',
         )
         .eq('order_id', orderId)
         .order('id', ascending: true);
@@ -213,9 +234,19 @@ class SupabaseOrdersRepository implements OrdersRepository {
       return const <CartLine>[];
     }
 
-    return response
-        .map((dynamic row) => _mapCartLine(row as Map<String, dynamic>))
+    final List<CartLine> lines = response
+        .map((dynamic row) {
+          try {
+            return _mapCartLine(row as Map<String, dynamic>);
+          } catch (e) {
+            debugPrint('[CART][WARN] failed to map cart line: $e row=$row');
+            return null;
+          }
+        })
+        .whereType<CartLine>()
         .toList();
+    debugPrint('[CART] fetchCartLines order=$orderId count=${lines.length}');
+    return lines;
   }
 
   @override
@@ -507,6 +538,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
     productName ??= variant['sku'] as String? ?? row['variant_id'] as String;
 
     return OrderItem(
+      id: row['id'] as String,
       variantId: row['variant_id'] as String,
       vendorCompanyId: row['vendor_company_id'] as String,
       qty: _toDouble(row['qty']),

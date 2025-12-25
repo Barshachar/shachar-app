@@ -81,7 +81,7 @@ void main() {
       MarketplaceLocalizations,
     )!;
     final String awaitingQuotesLabel =
-        l10n.translate('rfq.status.awaiting_quotes');
+        l10n.translate('rfqStatusAwaitingQuotes');
     expect(find.textContaining(awaitingQuotesLabel), findsOneWidget);
 
     store.update(status: 'rejected');

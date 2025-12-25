@@ -12,6 +12,7 @@
   {"path":"/finance/cost-centers","name":"cost-centers","guards":[]},
   {"path":"/promotions","name":"promotions","guards":[]},
   {"path":"/customer","name":"customer-home","guards":["auth","company","roles:customerAdmin,buyer"]},
+  {"path":"/customer/about","name":"about","guards":["auth","company","roles:customerAdmin,buyer"]},
   {"path":"/customer/cart","name":"cart","guards":["auth","company","roles:customerAdmin,buyer"]},
   {"path":"/customer/cart/checkout","name":"checkout","guards":["auth","company","roles:customerAdmin,buyer"]},
   {"path":"/customer/orders","name":"customer-orders","guards":["auth","company","roles:customerAdmin,buyer"]},

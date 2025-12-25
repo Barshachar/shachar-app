@@ -20,7 +20,7 @@ final cartControllerProvider =
     ref,
     repository,
     catalogRepository: catalogRepository,
-  );
+  )..warmupDraft();
 });
 
 final cartLinesProvider = FutureProvider.autoDispose
@@ -56,12 +56,21 @@ class CartController extends legacy.StateNotifier<CartState> {
   final OrdersRepository _ordersRepository;
   final CatalogRepository _catalogRepository;
 
+  /// Prepares a draft order as early as possible so UI using the cart
+  /// always has an order id to bind to.
+  void warmupDraft() {
+    // ignore: discarded_futures
+    _ensureDraftOrder();
+  }
+
   Future<String> _ensureDraftOrder({bool forceRefresh = false}) async {
     final String? existing = state.draftOrderId;
     if (!forceRefresh && existing != null && existing.isNotEmpty) {
       return existing;
     }
-    return ensureOpenDraft();
+    final String draft = await ensureOpenDraft();
+    debugPrint('[CART] ensured draft=$draft');
+    return draft;
   }
 
   Future<void> addVariant(
@@ -70,6 +79,8 @@ class CartController extends legacy.StateNotifier<CartState> {
   }) async {
     final double safeQty = qty <= 0 ? 1 : qty;
     final String orderId = await _ensureDraftOrder();
+    debugPrint(
+        '[CART] addVariant order=$orderId variant=${variant.id} qty=$safeQty');
     await _ordersRepository.addLineToOrder(
       orderId: orderId,
       variantId: variant.id,

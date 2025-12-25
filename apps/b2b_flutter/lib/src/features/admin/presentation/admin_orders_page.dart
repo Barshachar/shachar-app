@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/widgets/admin_actions_widgets.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/widgets/order_status_chip.dart';
 
@@ -69,7 +70,7 @@ class _AdminOrdersPageState extends ConsumerState<AdminOrdersPage> {
   }
 
   Future<List<_AdminOrder>> _loadOrders() async {
-    final SupabaseClient client = Supabase.instance.client;
+    final SupabaseClient client = ref.read(supabaseClientProvider);
     final dynamic response = await client
         .from('orders')
         .select('id, order_number, created_at, total, status')
@@ -274,6 +275,7 @@ class _AdminOrdersPageState extends ConsumerState<AdminOrdersPage> {
     return _AdminOrdersTable(
       orders: _visibleOrders,
       l10n: l10n,
+      supabase: ref.read(supabaseClientProvider),
     );
   }
 }
@@ -525,10 +527,12 @@ class _AdminOrdersTable extends StatelessWidget {
   const _AdminOrdersTable({
     required this.orders,
     required this.l10n,
+    required this.supabase,
   });
 
   final List<_AdminOrder> orders;
   final MarketplaceLocalizations? l10n;
+  final SupabaseClient supabase;
 
   @override
   Widget build(BuildContext context) {
@@ -615,9 +619,7 @@ class _AdminOrdersTable extends StatelessWidget {
                             AdminSplitActionButton(
                               orderId: order.id,
                               callSplit: () async {
-                                final SupabaseClient supa =
-                                    Supabase.instance.client;
-                                final int rpcResult = await supa.rpc<int?>(
+                                final int rpcResult = await supabase.rpc<int?>(
                                         'rpc_split_order',
                                         params: {'p_order_id': order.id}) ??
                                     0;
@@ -627,7 +629,7 @@ class _AdminOrdersTable extends StatelessWidget {
                                     .replaceAll(
                                         '{count}', rpcResult.toString());
                                 try {
-                                  await supa.functions.invoke(
+                                  await supabase.functions.invoke(
                                     'order_splitter',
                                     body: {'order_id': order.id},
                                   );

@@ -41,7 +41,7 @@
 
 ### 1️⃣ User-Friendly Error Handler
 
-**📁 מיקום**: `app/lib/src/core/errors/user_friendly_error_handler.dart`
+**📁 מיקום**: `apps/b2b_flutter/lib/src/core/errors/user_friendly_error_handler.dart`
 
 #### תכונות:
 - ✅ המרה אוטומטית של שגיאות טכניות להודעות בעברית
@@ -123,7 +123,7 @@ try {
 
 ### 2️⃣ Onboarding Service
 
-**📁 מיקום**: `app/lib/src/core/onboarding/onboarding_service.dart`
+**📁 מיקום**: `apps/b2b_flutter/lib/src/core/onboarding/onboarding_service.dart`
 
 #### תכונות:
 - ✅ Tutorial אינטראקטיבי עם 5 מסכים
@@ -195,7 +195,7 @@ FeatureSpotlight(
 
 ### 3️⃣ Skeleton Loaders
 
-**📁 מיקום**: `app/lib/src/design_system/components/skeleton.dart`
+**📁 מיקום**: `apps/b2b_flutter/lib/src/design_system/components/skeleton.dart`
 
 #### רכיבים זמינים:
 - ✅ `ShimmerWidget` - אפקט shimmer בסיסי
@@ -583,7 +583,7 @@ git commit -m "Add skeleton loaders"
 ### מסמכים נוספים
 - `docs/UX_TEST_REPORT_PROFESSIONAL.md` - דוח UX המלא
 - `docs/BEST_PRACTICES.md` - Best practices כלליים
-- `app/lib/src/design_system/` - מערכת עיצוב
+- `apps/b2b_flutter/lib/src/design_system/` - מערכת עיצוב
 
 ### צור קשר
 - Email: dev@ashachar.co.il

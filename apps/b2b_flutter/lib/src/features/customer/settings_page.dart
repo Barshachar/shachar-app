@@ -3,8 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
+import 'package:ashachar_marketplace/src/app/app_state.dart';
 import 'package:ashachar_marketplace/src/core/onboarding/onboarding_service.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -17,11 +21,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _emailNotifications = true;
   bool _pushNotifications = true;
-  String _language = 'he';
-  String _theme = 'system';
 
   @override
   Widget build(BuildContext context) {
+    final Locale locale = ref.watch(localeProvider);
+    final ThemeMode themeMode = ref.watch(themeModeProvider);
+    final String languageCode = locale.languageCode;
     return Scaffold(
       appBar: AppBar(
         title: const Text('הגדרות'),
@@ -78,7 +83,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.language),
                   title: const Text('שפה'),
-                  subtitle: Text(_language == 'he' ? 'עברית' : 'English'),
+                  subtitle: Text(languageCode == 'he' ? 'עברית' : 'English'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     _showLanguageDialog();
@@ -88,7 +93,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.palette_outlined),
                   title: const Text('ערכת נושא'),
-                  subtitle: Text(_getThemeText(_theme)),
+                  subtitle: Text(_getThemeText(themeMode)),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     _showThemeDialog();
@@ -110,7 +115,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: const Text('מרכז עזרה'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    Navigator.pushNamed(context, '/help');
+                    context.go('/customer/help');
                   },
                 ),
                 const Divider(height: 1),
@@ -190,19 +195,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  String _getThemeText(String theme) {
-    switch (theme) {
-      case 'light':
+  String _getThemeText(ThemeMode themeMode) {
+    switch (themeMode) {
+      case ThemeMode.light:
         return 'בהיר';
-      case 'dark':
+      case ThemeMode.dark:
         return 'כהה';
-      case 'system':
-      default:
+      case ThemeMode.system:
         return 'לפי המערכת';
     }
   }
 
   void _showLanguageDialog() {
+    final String currentLanguage = ref.read(localeProvider).languageCode;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -213,19 +218,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             RadioListTile<String>(
               title: const Text('עברית'),
               value: 'he',
-              groupValue: _language,
-              onChanged: (value) {
-                setState(() => _language = value!);
-                Navigator.of(context).pop();
+              groupValue: currentLanguage,
+              onChanged: (value) async {
+                if (value == null) {
+                  return;
+                }
+                ref
+                    .read<StateController<Locale>>(localeProvider.notifier)
+                    .state = Locale(value);
+                await _persistLocale(value);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
             ),
             RadioListTile<String>(
               title: const Text('English'),
               value: 'en',
-              groupValue: _language,
-              onChanged: (value) {
-                setState(() => _language = value!);
-                Navigator.of(context).pop();
+              groupValue: currentLanguage,
+              onChanged: (value) async {
+                if (value == null) {
+                  return;
+                }
+                ref
+                    .read<StateController<Locale>>(localeProvider.notifier)
+                    .state = Locale(value);
+                await _persistLocale(value);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
             ),
           ],
@@ -235,6 +256,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showThemeDialog() {
+    final ThemeMode currentTheme = ref.read(themeModeProvider);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -242,31 +264,58 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RadioListTile<String>(
+            RadioListTile<ThemeMode>(
               title: const Text('בהיר'),
-              value: 'light',
-              groupValue: _theme,
-              onChanged: (value) {
-                setState(() => _theme = value!);
-                Navigator.of(context).pop();
+              value: ThemeMode.light,
+              groupValue: currentTheme,
+              onChanged: (value) async {
+                if (value == null) {
+                  return;
+                }
+                ref
+                    .read<StateController<ThemeMode>>(
+                        themeModeProvider.notifier)
+                    .state = value;
+                await _persistThemeMode(value);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
             ),
-            RadioListTile<String>(
+            RadioListTile<ThemeMode>(
               title: const Text('כהה'),
-              value: 'dark',
-              groupValue: _theme,
-              onChanged: (value) {
-                setState(() => _theme = value!);
-                Navigator.of(context).pop();
+              value: ThemeMode.dark,
+              groupValue: currentTheme,
+              onChanged: (value) async {
+                if (value == null) {
+                  return;
+                }
+                ref
+                    .read<StateController<ThemeMode>>(
+                        themeModeProvider.notifier)
+                    .state = value;
+                await _persistThemeMode(value);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
             ),
-            RadioListTile<String>(
+            RadioListTile<ThemeMode>(
               title: const Text('לפי המערכת'),
-              value: 'system',
-              groupValue: _theme,
-              onChanged: (value) {
-                setState(() => _theme = value!);
-                Navigator.of(context).pop();
+              value: ThemeMode.system,
+              groupValue: currentTheme,
+              onChanged: (value) async {
+                if (value == null) {
+                  return;
+                }
+                ref
+                    .read<StateController<ThemeMode>>(
+                        themeModeProvider.notifier)
+                    .state = value;
+                await _persistThemeMode(value);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
             ),
           ],
@@ -330,6 +379,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _persistLocale(String localeCode) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(appLocalePreferenceKey, localeCode);
+  }
+
+  Future<void> _persistThemeMode(ThemeMode mode) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      appThemeModePreferenceKey,
+      themeModeToPreference(mode),
     );
   }
 }

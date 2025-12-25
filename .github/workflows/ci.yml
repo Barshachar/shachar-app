@@ -19,6 +19,18 @@ jobs:
       - uses: actions/checkout@v4
       - run: .ci/guard-offline-toolkit-imports.sh
 
+  guard-flutter-node-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: .ci/guard-flutter-node-artifacts.sh
+
+  guard-flutter-supabase-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: .ci/guard-flutter-supabase-ui.sh
+
   guard-typegen-ts:
     name: Guard Supabase TS typegen
     runs-on: ubuntu-latest
@@ -31,6 +43,23 @@ jobs:
           node-version: '20'
       - run: corepack enable
       - run: bash .ci/guard-typegen-ts.sh
+
+  guard-typegen-dart:
+    name: Guard Supabase Dart typegen
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.RLS_TEST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Dart Supabase types and check drift
+        run: |
+          set -euo pipefail
+          bash tools/ci/gen-dart-types.sh
+          git diff --quiet packages/dart/contracts/lib/generated/supabase.types.dart || {
+            echo "::error::Dart Supabase types drifted. Regenerate and commit."
+            git --no-pager diff --stat packages/dart/contracts/lib/generated/supabase.types.dart
+            exit 1
+          }
 
   pwa-tests:
     runs-on: ubuntu-latest
@@ -76,10 +105,12 @@ jobs:
         with:
           flutter-version: 'stable'
       - run: flutter pub get
+        working-directory: apps/b2b_flutter
       - name: dart format (check only)
         run: dart format --set-exit-if-changed apps/b2b_flutter packages/dart/offline_toolkit
       - name: flutter analyze
         run: flutter analyze
+        working-directory: apps/b2b_flutter
 
   rls-setup-and-assert:
     name: RLS setup + assertions on clean DB

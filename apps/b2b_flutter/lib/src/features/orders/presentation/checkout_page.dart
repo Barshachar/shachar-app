@@ -5,11 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:offline_toolkit/offline_toolkit.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/components.dart';
 import 'package:ashachar_marketplace/src/app/theme/tokens.dart';
 import 'package:ashachar_marketplace/src/auth/session_provider.dart';
+import 'package:ashachar_marketplace/src/core/errors/user_friendly_error_handler.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
+import 'package:ashachar_marketplace/src/features/catalog/domain/catalog_models.dart';
+import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_recommendations_provider.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/order_approval_state.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/widgets/approval_status_banner.dart';
@@ -23,7 +28,7 @@ import 'package:ashachar_marketplace/src/features/pricing/presentation/contract_
 typedef SendOrderForApproval = Future<void> Function({required String orderId});
 
 final sendOrderForApprovalProvider = Provider<SendOrderForApproval>((ref) {
-  final SupabaseClient client = Supabase.instance.client;
+  final SupabaseClient client = ref.read(supabaseClientProvider);
   return ({required String orderId}) async {
     await client.rpc<void>(
       'rpc_evaluate_approvals',
@@ -191,117 +196,165 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
         ),
       ),
       body: SafeArea(
-        child: formOptionsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (Object error, _) => Padding(
-            padding: context.pagePadding(),
-            child: AStateMessage(
-              icon: Icons.error_outline,
-              title: l10n?.translate('checkoutOptionsErrorTitle') ??
-                  'לא הצלחנו לטעון את פרטי החשבון',
-              message: l10n?.translate('checkoutOptionsErrorMessage') ??
-                  'נסה לרענן או לבדוק את החיבור.',
-              primaryLabel: l10n?.translate('commonRetry') ?? 'נסה שוב',
-              onPrimaryPressed: () =>
-                  ref.invalidate(checkoutFormOptionsProvider),
-            ),
-          ),
-          data: (CheckoutFormOptions options) {
-            final CheckoutAccountOption? billToSelection =
-                options.billToAccounts.firstWhereOrNull(
-                    (CheckoutAccountOption option) => option.id == _billToId);
-            final CheckoutLocationOption? shipToSelection =
-                options.shipToLocations.firstWhereOrNull(
-                    (CheckoutLocationOption option) => option.id == _shipToId);
-            final CheckoutPaymentTermOption? paymentTermSelection = options
-                .paymentTerms
-                .firstWhereOrNull((CheckoutPaymentTermOption option) =>
-                    option.id == _paymentTermId);
-            final String poNumber = _poController.text.trim();
-            final String deliveryNotes = _notesController.text.trim();
+        child: Column(
+          children: [
+            const OfflineSyncBanner(),
+            Expanded(
+              child: formOptionsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (Object error, _) => Padding(
+                  padding: context.pagePadding(),
+                  child: AStateMessage(
+                    icon: Icons.error_outline,
+                    title: l10n?.translate('checkoutOptionsErrorTitle') ??
+                        'לא הצלחנו לטעון את פרטי החשבון',
+                    message: error.userFriendlyMessage,
+                    primaryLabel: l10n?.translate('commonRetry') ?? 'נסה שוב',
+                    onPrimaryPressed: () =>
+                        ref.invalidate(checkoutFormOptionsProvider),
+                  ),
+                ),
+                data: (CheckoutFormOptions options) {
+                  final CheckoutAccountOption? billToSelection = options
+                      .billToAccounts
+                      .firstWhereOrNull((CheckoutAccountOption option) =>
+                          option.id == _billToId);
+                  final CheckoutLocationOption? shipToSelection = options
+                      .shipToLocations
+                      .firstWhereOrNull((CheckoutLocationOption option) =>
+                          option.id == _shipToId);
+                  final CheckoutPaymentTermOption? paymentTermSelection =
+                      options.paymentTerms.firstWhereOrNull(
+                          (CheckoutPaymentTermOption option) =>
+                              option.id == _paymentTermId);
+                  final String poNumber = _poController.text.trim();
+                  final String deliveryNotes = _notesController.text.trim();
 
-            final Widget? approvalBanner =
-                _buildApprovalBanner(context, approvalAsync, l10n);
-            final Widget formSection = _buildForm(
-              context,
-              l10n,
-              options,
-              billToSelection,
-              shipToSelection,
-              paymentTermSelection,
-            );
-            final Widget summarySection = _CheckoutSummaryCard(
-              linesAsync: linesAsync,
-              l10n: l10n,
-              approvalAsync: approvalAsync,
-              onReviewPressed: () => _handleContinue(context, l10n),
-              onSendForApprovalPressed: _handleSendForApprovalPressed,
-              onSubmitApprovedPressed: _handleSubmitApprovedOrderPressed,
-              isSendingApproval: _isSendingApproval,
-              isSubmittingOrder: _isSubmittingOrder,
-              companyId: companyId,
-              companyCatalog: companyCatalog,
-              billTo: billToSelection,
-              shipTo: shipToSelection,
-              paymentTerm: paymentTermSelection,
-              poNumber: poNumber,
-              deliveryNotes: deliveryNotes,
-            );
+                  final Widget? approvalBanner =
+                      _buildApprovalBanner(context, approvalAsync, l10n);
+                  final Widget formSection = _buildForm(
+                    context,
+                    l10n,
+                    options,
+                    billToSelection,
+                    shipToSelection,
+                    paymentTermSelection,
+                  );
+                  final Widget summarySection = _CheckoutSummaryCard(
+                    linesAsync: linesAsync,
+                    l10n: l10n,
+                    approvalAsync: approvalAsync,
+                    onReviewPressed: () => _handleContinue(context, l10n),
+                    onSendForApprovalPressed: _handleSendForApprovalPressed,
+                    onSubmitApprovedPressed: _handleSubmitApprovedOrderPressed,
+                    isSendingApproval: _isSendingApproval,
+                    isSubmittingOrder: _isSubmittingOrder,
+                    companyId: companyId,
+                    companyCatalog: companyCatalog,
+                    billTo: billToSelection,
+                    shipTo: shipToSelection,
+                    paymentTerm: paymentTermSelection,
+                    poNumber: poNumber,
+                    deliveryNotes: deliveryNotes,
+                  );
+                  final Set<String> excludedVariantIds = linesAsync.maybeWhen(
+                    data: (List<CartLine> lines) => {
+                      for (final CartLine line in lines)
+                        if (line.variantId.isNotEmpty) line.variantId,
+                    },
+                    orElse: () => const <String>{},
+                  );
+                  final CatalogRecommendationRequest recommendationsRequest =
+                      CatalogRecommendationRequest(
+                    excludedVariantIds: excludedVariantIds,
+                    allowedVariantIds: companyCatalog,
+                    limit: 3,
+                    seed: companyId,
+                  );
+                  final Widget recommendationsSection =
+                      _CheckoutRecommendationsSection(
+                    orderId: widget.orderId,
+                    request: recommendationsRequest,
+                  );
 
-            return FocusTraversalGroup(
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final bool isWide = constraints.maxWidth >= 960;
-                  final List<Widget> narrowChildren = <Widget>[
-                    if (approvalBanner != null) approvalBanner,
-                    formSection,
-                    const SizedBox(height: ASpacing.xxl),
-                    summarySection,
-                  ];
+                  return FocusTraversalGroup(
+                    child: LayoutBuilder(
+                      builder:
+                          (BuildContext context, BoxConstraints constraints) {
+                        final bool isWide = constraints.maxWidth >= 960;
+                        final List<Widget> narrowChildren = <Widget>[
+                          if (approvalBanner != null) approvalBanner,
+                          formSection,
+                          const SizedBox(height: ASpacing.xxl),
+                          summarySection,
+                          const SizedBox(height: ASpacing.xxl),
+                          recommendationsSection,
+                        ];
 
-                  if (!isWide) {
-                    return SingleChildScrollView(
-                      padding: context.pagePadding(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: narrowChildren,
-                      ),
-                    );
-                  }
-
-                  return SingleChildScrollView(
-                    padding: context.pagePadding(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (approvalBanner != null) approvalBanner,
-                        Align(
-                          alignment: AlignmentDirectional.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1200),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: formSection,
-                                ),
-                                const SizedBox(width: ASpacing.xxl),
-                                SizedBox(
-                                  width: 360,
-                                  child: summarySection,
-                                ),
-                              ],
+                        if (!isWide) {
+                          return SingleChildScrollView(
+                            padding: context.pagePadding(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: narrowChildren,
                             ),
+                          );
+                        }
+
+                        return SingleChildScrollView(
+                          padding: context.pagePadding(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (approvalBanner != null) approvalBanner,
+                              Align(
+                                alignment: AlignmentDirectional.topCenter,
+                                child: ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 1200),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: formSection,
+                                      ),
+                                      const SizedBox(width: ASpacing.xxl),
+                                      SizedBox(
+                                        width: 360,
+                                        child: summarySection,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: ASpacing.xxl),
+                              Align(
+                                alignment: AlignmentDirectional.topCenter,
+                                child: ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 1200),
+                                  child: recommendationsSection,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   );
                 },
               ),
-            );
-          },
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: QuickOrderNavBar(
+          currentTab: QuickNavTab.checkout,
+          checkoutOrderId: widget.orderId,
         ),
       ),
     );
@@ -1165,6 +1218,207 @@ class _CheckoutSummaryCard extends ConsumerWidget {
       icon: const Icon(Icons.check_circle_outline, size: 18),
       onPressed: onReviewPressed,
     );
+  }
+}
+
+class _CheckoutRecommendationsSection extends ConsumerWidget {
+  const _CheckoutRecommendationsSection({
+    required this.orderId,
+    required this.request,
+  });
+
+  final String orderId;
+  final CatalogRecommendationRequest request;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final AsyncValue<List<CatalogRecommendation>> recommendationsAsync =
+        ref.watch(catalogRecommendationsProvider(request));
+
+    return recommendationsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (Object _, StackTrace __) => const SizedBox.shrink(),
+      data: (List<CatalogRecommendation> recommendations) {
+        if (recommendations.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final String title = l10n?.translate('cartRecommendationsTitle') ??
+            'Complete your order';
+        final String subtitle =
+            l10n?.translate('cartRecommendationsSubtitle') ??
+                'Products often ordered together';
+
+        return Column(
+          key: const ValueKey<String>('checkout_recommendations_section'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: ATypography.titleMd),
+            const SizedBox(height: ASpacing.xs),
+            Text(
+              subtitle,
+              style: ATypography.bodySm.copyWith(
+                color: AColors.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: ASpacing.md),
+            SizedBox(
+              height: 200,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: recommendations.length,
+                separatorBuilder: (_, __) => const SizedBox(width: ASpacing.md),
+                itemBuilder: (BuildContext context, int index) {
+                  return _CheckoutRecommendationCard(
+                    orderId: orderId,
+                    recommendation: recommendations[index],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CheckoutRecommendationCard extends ConsumerWidget {
+  const _CheckoutRecommendationCard({
+    required this.orderId,
+    required this.recommendation,
+  });
+
+  final String orderId;
+  final CatalogRecommendation recommendation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final Locale locale = Localizations.localeOf(context);
+    final String title =
+        _checkoutRecommendationDisplayName(recommendation.product, locale);
+    final String reason = l10n?.translate(recommendation.reason.l10nKey) ??
+        _checkoutFallbackRecommendationReason(recommendation.reason);
+    final String addLabel = l10n?.translate('cartRecommendationsAdd') ?? 'Add';
+    final String addedMessage =
+        l10n?.translate('cartRecommendationsAdded') ?? 'Added to cart';
+
+    return Container(
+      width: 210,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AColors.neutral200),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F000000),
+            blurRadius: 12,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(ASpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ASpacing.sm,
+              vertical: 2,
+            ),
+            decoration: BoxDecoration(
+              color: AColors.neutral100,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              reason,
+              style: ATypography.bodySm.copyWith(
+                color: AColors.neutral600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: ASpacing.sm),
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: ATypography.titleSm,
+          ),
+          const SizedBox(height: ASpacing.xs),
+          Text(
+            recommendation.product.sku,
+            style: ATypography.bodySm.copyWith(
+              color: AColors.mutedForeground,
+            ),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  final OrdersRepository repository =
+                      ref.read(ordersRepositoryProvider);
+                  await repository.addLineToOrder(
+                    orderId: orderId,
+                    variantId: recommendation.variant.id,
+                    qty: 1,
+                  );
+                  ref.invalidate(cartLinesProvider(orderId));
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(content: Text(addedMessage)));
+                } on Object catch (error) {
+                  if (!context.mounted) {
+                    return;
+                  }
+                  final String fallback = l10n?.translate('cartActionFailed') ??
+                      'Cart action failed.';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$fallback $error')),
+                  );
+                }
+              },
+              child: Text(addLabel),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _checkoutRecommendationDisplayName(Product product, Locale locale) {
+  if (locale.languageCode == 'he') {
+    return product.nameHe.isNotEmpty ? product.nameHe : product.nameEn;
+  }
+  return product.nameEn.isNotEmpty ? product.nameEn : product.nameHe;
+}
+
+String _checkoutFallbackRecommendationReason(
+    CatalogRecommendationReason reason) {
+  switch (reason) {
+    case CatalogRecommendationReason.fastDelivery:
+      return 'Fast delivery';
+    case CatalogRecommendationReason.lowMoq:
+      return 'Low MOQ';
+    case CatalogRecommendationReason.smallPack:
+      return 'Small pack';
+    case CatalogRecommendationReason.defaultReason:
+      return 'Suggested';
   }
 }
 

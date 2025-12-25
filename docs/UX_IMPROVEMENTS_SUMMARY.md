@@ -21,7 +21,7 @@
 ### 3 מודולים מקצועיים חדשים:
 
 #### 1. User-Friendly Error Handler 🛡️
-**מיקום**: `app/lib/src/core/errors/user_friendly_error_handler.dart`
+**מיקום**: `apps/b2b_flutter/lib/src/core/errors/user_friendly_error_handler.dart`
 
 **מה זה עושה?**
 - ממיר שגיאות טכניות להודעות ידידותיות בעברית
@@ -39,7 +39,7 @@
 ---
 
 #### 2. Onboarding Service 🎓
-**מיקום**: `app/lib/src/core/onboarding/onboarding_service.dart`
+**מיקום**: `apps/b2b_flutter/lib/src/core/onboarding/onboarding_service.dart`
 
 **מה זה עושה?**
 - הדרכה אינטראקטיבית למשתמשים חדשים
@@ -52,7 +52,7 @@
 ---
 
 #### 3. Skeleton Loaders ⚡
-**מיקום**: `app/lib/src/design_system/components/skeleton.dart`
+**מיקום**: `apps/b2b_flutter/lib/src/design_system/components/skeleton.dart`
 
 **מה זה עושה?**
 - רכיבי טעינה מקצועיים עם אנימציית Shimmer
@@ -190,7 +190,7 @@ Week 4: מדידה וניתוח תוצאות
 **מסמכים:**
 - דוח UX מלא: `docs/UX_TEST_REPORT_PROFESSIONAL.md`
 - מדריך מימוש: `docs/UX_IMPROVEMENTS_IMPLEMENTATION_GUIDE.md`
-- קוד מקור: `app/lib/src/core/` + `app/lib/src/design_system/components/`
+- קוד מקור: `apps/b2b_flutter/lib/src/core/` + `apps/b2b_flutter/lib/src/design_system/components/`
 
 ---
 

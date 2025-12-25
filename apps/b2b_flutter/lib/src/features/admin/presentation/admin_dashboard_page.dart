@@ -7,6 +7,7 @@ import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/auth/session_provider.dart';
 import 'package:ashachar_marketplace/src/core/async_value_x.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({super.key});
@@ -26,46 +27,44 @@ class AdminDashboardPage extends ConsumerWidget {
     final Color actionColor = Theme.of(context).colorScheme.onPrimary;
 
     final String pageTitle =
-        l10n?.translate('adminDashboardTitle') ?? 'Admin dashboard';
+        l10n?.translate('adminDashboardTitle') ?? 'לוח ניהול על';
     final String overviewHeading =
-        l10n?.translate('adminDashboardOverviewHeading') ?? 'Business overview';
+        l10n?.translate('adminDashboardOverviewHeading') ?? 'סקירה תפעולית';
     final String quickActionsHeading =
-        l10n?.translate('adminDashboardQuickActionsHeading') ?? 'Quick actions';
+        l10n?.translate('adminDashboardQuickActionsHeading') ?? 'פעולות מהירות';
     final String signalsHeading =
-        l10n?.translate('adminDashboardSignalsHeading') ??
-            'Operational signals';
+        l10n?.translate('adminDashboardSignalsHeading') ?? 'התראות מערכת';
     final String usersCta =
-        l10n?.translate('adminDashboardUsersCta') ?? 'Manage users';
+        l10n?.translate('adminDashboardUsersCta') ?? 'ניהול משתמשים ותפקידים';
     final String usersDescription =
         l10n?.translate('adminDashboardUsersDescription') ??
-            'Invite admins and manage access controls';
+            'הוספה/חסימה, הקצאת רולים והרשאות סופר-אדמין';
     final String supportCta =
-        l10n?.translate('adminDashboardSupportCta') ?? 'Open support inbox';
+        l10n?.translate('adminDashboardSupportCta') ?? 'תמיכה ובקשות שירות';
     final String supportDescription =
         l10n?.translate('adminDashboardSupportDescription') ??
-            'Track escalations and SLA breaches';
-    final String taxCta = l10n?.translate('adminDashboardTaxSettingsCta') ??
-        'Configure tax rules';
+            'מעקב אחר פניות SLA, הקצאות וטיפול בהסלמה';
+    final String taxCta =
+        l10n?.translate('adminDashboardTaxSettingsCta') ?? 'הגדרות מערכת ומסים';
     final String taxDescription =
         l10n?.translate('adminDashboardTaxSettingsDescription') ??
-            'VAT, exemptions, export profiles';
+            'VAT, חריגים, פרופילי יצוא ופריסת מדיניות';
     final String auditCta =
-        l10n?.translate('adminDashboardAuditLogCta') ?? 'Review audit log';
+        l10n?.translate('adminDashboardAuditLogCta') ?? 'יומן אבטחה ושינויים';
     final String auditDescription =
         l10n?.translate('adminDashboardAuditLogDescription') ??
-            'Latest configuration changes & impersonations';
+            'כל הפעולות, אימפרסונציה, וגרסאות תצורה';
     final String vendorsCta =
-        l10n?.translate('adminDashboardVendorsCta') ?? 'Manage vendor queue';
+        l10n?.translate('adminDashboardVendorsCta') ?? 'ניהול ספקים והטמעה';
     final String vendorsDescription =
         l10n?.translate('adminDashboardVendorsDescription') ??
-            'Approve or reject onboarding requests';
+            'אישור/דחייה של ספקים, בקרת SLA ותורים';
     final String supportAlertsTitle =
-        l10n?.translate('adminDashboardSupportAlerts') ?? 'Support alerts';
+        l10n?.translate('adminDashboardSupportAlerts') ?? 'התראות תמיכה';
     final String complianceAlertsTitle =
-        l10n?.translate('adminDashboardComplianceAlerts') ??
-            'Compliance & approvals';
-    final String notesLabel = l10n?.translate('adminDashboardNotes') ??
-        'Demo metrics for illustration purposes only.';
+        l10n?.translate('adminDashboardComplianceAlerts') ?? 'אישורים וציות';
+    final String notesLabel =
+        l10n?.translate('adminDashboardNotes') ?? 'נתונים לדוגמה להמחשה.';
 
     final List<_OverviewStat> overview = <_OverviewStat>[
       _OverviewStat(
@@ -104,6 +103,18 @@ class AdminDashboardPage extends ConsumerWidget {
         destination: '/admin/users',
       ),
       _QuickAction(
+        label: 'קטלוג ומחירונים',
+        description: 'ניהול מוצרים, וריאציות, רשימות מחיר וחסימות מכירה',
+        icon: Icons.inventory_2_outlined,
+        destination: '/admin/catalog',
+      ),
+      _QuickAction(
+        label: 'הזמנות ואישורים',
+        description: 'בקרה על הזמנות פתוחות, טיוטות והחלטות אישור',
+        icon: Icons.assignment_turned_in_outlined,
+        destination: '/admin/orders',
+      ),
+      _QuickAction(
         label: supportCta,
         description: supportDescription,
         icon: Icons.headset_mic_outlined,
@@ -126,6 +137,12 @@ class AdminDashboardPage extends ConsumerWidget {
         description: vendorsDescription,
         icon: Icons.assignment_turned_in_outlined,
         destination: '/admin/vendor-queue',
+      ),
+      _QuickAction(
+        label: 'דוחות וייצוא',
+        description: 'דוחות תפעוליים, ייצואי CSV ומתזמני הפקות',
+        icon: Icons.analytics_outlined,
+        destination: '/admin/reports',
       ),
     ];
 
@@ -176,7 +193,7 @@ class AdminDashboardPage extends ConsumerWidget {
               onPressed: () async {
                 if (isAuthenticated) {
                   try {
-                    await Supabase.instance.client.auth.signOut();
+                    await ref.read(supabaseClientProvider).auth.signOut();
                     if (context.mounted) {
                       context.go('/home');
                     }

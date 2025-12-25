@@ -19,6 +19,7 @@ import 'package:ashachar_marketplace/src/features/orders/presentation/checkout_p
 import 'package:ashachar_marketplace/src/features/orders/presentation/order_detail_page.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/orders_controller.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/orders_page.dart';
+import 'package:ashachar_marketplace/src/features/returns/data/supabase_return_request_repository.dart';
 import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
 import 'package:ashachar_marketplace/src/features/rfq/presentation/customer_rfq_pages.dart';
 import 'package:ashachar_marketplace/src/features/rfq/presentation/rfq_providers.dart';
@@ -30,6 +31,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../test_utils/fake_session_controller.dart';
+import '../test_utils/fake_return_request_repository.dart';
 
 class SmokeScenario {
   const SmokeScenario(this.name, this.build);
@@ -95,6 +97,7 @@ class SmokeFixture {
     createdAt: _now,
     items: <OrderItem>[
       OrderItem(
+        id: 'item-green',
         variantId: 'variant-green',
         vendorCompanyId: 'vendor-1',
         qty: 2,
@@ -104,6 +107,7 @@ class SmokeFixture {
         variantSku: 'HERB-001',
       ),
       OrderItem(
+        id: 'item-red',
         variantId: 'variant-red',
         vendorCompanyId: 'vendor-2',
         qty: 1,
@@ -366,6 +370,9 @@ class SmokeFixture {
             requiresApproval: true,
             rawStatus: 'pending',
           ),
+        ),
+        returnRequestRepositoryProvider.overrideWithValue(
+          FakeReturnRequestRepository(),
         ),
         catalogRepositoryProvider.overrideWithValue(_catalogRepository),
         priceResolutionServiceProvider.overrideWithValue(_priceService),

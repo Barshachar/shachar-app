@@ -73,9 +73,25 @@ String _guessKey(String normalized) {
     return _statusDefinitions[normalized]!.key;
   }
   if (normalized.startsWith('rfq_')) {
-    return 'rfq.status.${normalized.substring(4)}';
+    return _toRfqStatusKey(normalized.substring(4));
   }
-  return 'status.$normalized';
+  return _toStatusKey(normalized);
+}
+
+String _toStatusKey(String normalized) {
+  return 'status${_toPascalCase(normalized)}';
+}
+
+String _toRfqStatusKey(String normalized) {
+  return 'rfqStatus${_toPascalCase(normalized)}';
+}
+
+String _toPascalCase(String value) {
+  return value
+      .split('_')
+      .where((segment) => segment.isNotEmpty)
+      .map((segment) => segment[0].toUpperCase() + segment.substring(1))
+      .join();
 }
 
 String _humanize(String raw) {
@@ -125,131 +141,143 @@ enum _StatusTone { neutral, info, success, warning, danger }
 final Map<String, _StatusDefinition> _statusDefinitions =
     <String, _StatusDefinition>{
   'placed': _StatusDefinition(
-    key: 'status.placed',
+    key: 'statusPlaced',
     tone: _StatusTone.success,
   ),
   'submitted': _StatusDefinition(
-    key: 'status.placed',
+    key: 'statusPlaced',
     tone: _StatusTone.success,
   ),
   'pending': _StatusDefinition(
-    key: 'status.pending',
+    key: 'statusPending',
     tone: _StatusTone.warning,
   ),
   'pending_approval': _StatusDefinition(
-    key: 'status.pending',
+    key: 'statusPending',
     tone: _StatusTone.warning,
   ),
   'awaiting_approval': _StatusDefinition(
-    key: 'status.pending',
+    key: 'statusPending',
     tone: _StatusTone.warning,
   ),
   'approval_pending': _StatusDefinition(
-    key: 'status.pending',
+    key: 'statusPending',
     tone: _StatusTone.warning,
   ),
   'needs_approval': _StatusDefinition(
-    key: 'status.pending',
+    key: 'statusPending',
     tone: _StatusTone.warning,
   ),
   'approved': _StatusDefinition(
-    key: 'status.approved',
+    key: 'statusApproved',
     tone: _StatusTone.success,
   ),
   'approval_approved': _StatusDefinition(
-    key: 'status.approved',
+    key: 'statusApproved',
     tone: _StatusTone.success,
   ),
   'rejected': _StatusDefinition(
-    key: 'status.rejected',
+    key: 'statusRejected',
     tone: _StatusTone.danger,
   ),
   'approval_rejected': _StatusDefinition(
-    key: 'status.rejected',
+    key: 'statusRejected',
     tone: _StatusTone.danger,
   ),
   'denied': _StatusDefinition(
-    key: 'status.rejected',
+    key: 'statusRejected',
     tone: _StatusTone.danger,
   ),
   'rejected_by_vendor': _StatusDefinition(
-    key: 'status.rejected',
+    key: 'statusRejected',
     tone: _StatusTone.danger,
   ),
   'vendor_rejected': _StatusDefinition(
-    key: 'status.rejected',
+    key: 'statusRejected',
     tone: _StatusTone.danger,
   ),
   'draft': _StatusDefinition(
-    key: 'status.draft',
+    key: 'statusDraft',
     tone: _StatusTone.neutral,
   ),
   'cancelled': _StatusDefinition(
-    key: 'status.cancelled',
+    key: 'statusCancelled',
     tone: _StatusTone.neutral,
   ),
   'canceled': _StatusDefinition(
-    key: 'status.cancelled',
+    key: 'statusCancelled',
     tone: _StatusTone.neutral,
   ),
   'processing': _StatusDefinition(
-    key: 'status.processing',
+    key: 'statusProcessing',
     tone: _StatusTone.info,
   ),
   'in_progress': _StatusDefinition(
-    key: 'status.processing',
+    key: 'statusProcessing',
     tone: _StatusTone.info,
   ),
   'completed': _StatusDefinition(
-    key: 'status.completed',
+    key: 'statusCompleted',
     tone: _StatusTone.success,
   ),
   'fulfilled': _StatusDefinition(
-    key: 'status.completed',
+    key: 'statusCompleted',
     tone: _StatusTone.success,
   ),
   'shipped': _StatusDefinition(
-    key: 'status.shipped',
+    key: 'statusShipped',
     tone: _StatusTone.success,
   ),
   'in_transit': _StatusDefinition(
-    key: 'status.shipped',
+    key: 'statusShipped',
+    tone: _StatusTone.success,
+  ),
+  'requested': _StatusDefinition(
+    key: 'statusRequested',
+    tone: _StatusTone.info,
+  ),
+  'received': _StatusDefinition(
+    key: 'statusReceived',
+    tone: _StatusTone.info,
+  ),
+  'refunded': _StatusDefinition(
+    key: 'statusRefunded',
     tone: _StatusTone.success,
   ),
   'awaiting_quotes': _StatusDefinition(
-    key: 'rfq.status.awaiting_quotes',
+    key: 'rfqStatusAwaitingQuotes',
     tone: _StatusTone.info,
   ),
   'awaiting_quote': _StatusDefinition(
-    key: 'rfq.status.awaiting_quotes',
+    key: 'rfqStatusAwaitingQuotes',
     tone: _StatusTone.info,
   ),
   'open': _StatusDefinition(
-    key: 'rfq.status.awaiting_quotes',
+    key: 'rfqStatusAwaitingQuotes',
     tone: _StatusTone.info,
   ),
   'quoted': _StatusDefinition(
-    key: 'rfq.status.quoted',
+    key: 'rfqStatusQuoted',
     tone: _StatusTone.success,
   ),
   'quote_submitted': _StatusDefinition(
-    key: 'rfq.status.quoted',
+    key: 'rfqStatusQuoted',
     tone: _StatusTone.success,
   ),
   'quote_sent': _StatusDefinition(
-    key: 'rfq.status.quoted',
+    key: 'rfqStatusQuoted',
     tone: _StatusTone.success,
   ),
   'expired': _StatusDefinition(
-    key: 'rfq.status.expired',
+    key: 'rfqStatusExpired',
     tone: _StatusTone.neutral,
   ),
   'quote_expired': _StatusDefinition(
-    key: 'rfq.status.expired',
+    key: 'rfqStatusExpired',
     tone: _StatusTone.neutral,
   ),
   'closed': _StatusDefinition(
-    key: 'status.completed',
+    key: 'statusCompleted',
     tone: _StatusTone.success,
   ),
 };

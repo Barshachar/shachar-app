@@ -30,7 +30,7 @@ enum _BulkStatus {
   added,
 }
 
-enum _QuickOrderTab {
+enum QuickNavTab {
   quickOrder,
   reorders,
   catalog,
@@ -116,6 +116,163 @@ class _BulkReviewRow {
       suggestions: suggestions ?? this.suggestions,
     );
   }
+}
+
+class QuickOrderNavBar extends StatelessWidget {
+  const QuickOrderNavBar({
+    super.key,
+    required this.currentTab,
+    this.checkoutOrderId,
+    this.onQuickTabSelected,
+    this.onCheckoutUnavailable,
+  });
+
+  final QuickNavTab currentTab;
+  final String? checkoutOrderId;
+  final ValueChanged<QuickNavTab>? onQuickTabSelected;
+  final VoidCallback? onCheckoutUnavailable;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_NavItem> items = <_NavItem>[
+      _NavItem(
+        tab: QuickNavTab.quickOrder,
+        icon: Icons.flash_on_outlined,
+        label: _label(context, 'quickOrderTabQuickOrder', 'הזמנה מהירה'),
+      ),
+      _NavItem(
+        tab: QuickNavTab.catalog,
+        icon: Icons.storefront_outlined,
+        label: _label(context, 'quickOrderTabCatalog', 'קטלוג'),
+      ),
+      _NavItem(
+        tab: QuickNavTab.cart,
+        icon: Icons.shopping_cart_outlined,
+        label: _label(context, 'quickOrderTabCart', 'סל'),
+      ),
+      _NavItem(
+        tab: QuickNavTab.checkout,
+        icon: Icons.assignment_turned_in_outlined,
+        label: _label(context, 'quickOrderTabCheckout', 'תשלום'),
+      ),
+    ];
+
+    final int selectedIndex =
+        items.indexWhere((item) => item.tab == currentTab).clamp(0, 3);
+
+    return Material(
+      color: AColors.surface,
+      elevation: 4,
+      child: SafeArea(
+        top: false,
+        child: NavigationBar(
+          selectedIndex: selectedIndex,
+          backgroundColor: Colors.transparent,
+          height: 72,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: items
+              .map(
+                (item) => NavigationDestination(
+                  icon: Icon(item.icon),
+                  selectedIcon: Icon(
+                    item.icon,
+                    color: AColors.primary,
+                  ),
+                  label: item.label,
+                ),
+              )
+              .toList(),
+          onDestinationSelected: (int index) {
+            if (index < 0 || index >= items.length) {
+              return;
+            }
+            _handleSelection(context, items[index].tab);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _handleSelection(BuildContext context, QuickNavTab tab) {
+    switch (tab) {
+      case QuickNavTab.quickOrder:
+      case QuickNavTab.reorders:
+      case QuickNavTab.categories:
+        if (onQuickTabSelected != null) {
+          onQuickTabSelected!(tab);
+        } else {
+          _goToQuickOrder(context, tab);
+        }
+        return;
+      case QuickNavTab.catalog:
+        context.go('/catalog');
+        return;
+      case QuickNavTab.promotions:
+        context.go('/promotions');
+        return;
+      case QuickNavTab.cart:
+        context.go('/customer/cart');
+        return;
+      case QuickNavTab.checkout:
+        if (checkoutOrderId != null && checkoutOrderId!.isNotEmpty) {
+          context.go('/customer/cart/checkout', extra: checkoutOrderId);
+          return;
+        }
+        onCheckoutUnavailable?.call();
+        _showSnack(
+          context,
+          _label(
+            context,
+            'quickOrderCheckoutUnavailable',
+            'פתחו הזמנה כדי לבצע תשלום',
+          ),
+        );
+        onQuickTabSelected?.call(QuickNavTab.cart);
+        return;
+    }
+  }
+
+  void _goToQuickOrder(BuildContext context, QuickNavTab tab) {
+    final String? tabParam = switch (tab) {
+      QuickNavTab.quickOrder => null,
+      QuickNavTab.reorders => 'reorders',
+      QuickNavTab.categories => 'categories',
+      _ => null,
+    };
+    final Uri uri = Uri(
+      path: '/catalog/quick-order',
+      queryParameters:
+          tabParam == null ? null : <String, String>{'tab': tabParam},
+    );
+    context.go(uri.toString());
+  }
+
+  String _label(BuildContext context, String key, String fallback) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String value = l10n?.translate(key) ?? fallback;
+    return value.isEmpty ? fallback : value;
+  }
+
+  void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _NavItem {
+  const _NavItem({
+    required this.tab,
+    required this.icon,
+    required this.label,
+  });
+  final QuickNavTab tab;
+  final IconData icon;
+  final String label;
 }
 
 class _RawBulkEntry {
@@ -224,6 +381,7 @@ class QuickOrderPage extends ConsumerStatefulWidget {
     super.key,
     this.showFilters = true,
     this.autoSearch = true,
+    this.initialTab = QuickNavTab.quickOrder,
   });
 
   @visibleForTesting
@@ -231,6 +389,8 @@ class QuickOrderPage extends ConsumerStatefulWidget {
 
   @visibleForTesting
   final bool autoSearch;
+
+  final QuickNavTab initialTab;
 
   @override
   ConsumerState<QuickOrderPage> createState() => _QuickOrderPageState();
@@ -288,7 +448,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
 
   AsyncValue<List<ProductSearchResult>> _results = const AsyncValue.loading();
   Timer? _debounce;
-  bool _inStockOnly = false;
+  final bool _inStockOnly = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _offset = 0;
@@ -306,12 +466,14 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
   _UndoBatch? _pendingUndoBatch;
   int _sessionAdditions = 0;
   QuickOrderStage _stage = QuickOrderStage.input;
+  bool _bulkFlowOpen = false;
   _BulkSummary? _lastBulkSummary;
-  _QuickOrderTab _currentTab = _QuickOrderTab.quickOrder;
+  late QuickNavTab _currentTab;
 
   @override
   void initState() {
     super.initState();
+    _currentTab = widget.initialTab;
     _loadCategories();
     if (widget.autoSearch) {
       _performSearch(reset: true);
@@ -353,13 +515,6 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
       if (!mounted) return;
       setState(() => _categoriesLoading = false);
     }
-  }
-
-  void _onQueryChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      _performSearch(reset: true);
-    });
   }
 
   Future<void> _performSearch({required bool reset}) async {
@@ -901,7 +1056,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
           <String, String>{
             'moq': moq.toString(),
             'requested': _formatQuantity(beforeMoq),
-            'final': _formatQuantity(working),
+            'finalValue': _formatQuantity(working),
           },
         ),
       );
@@ -920,7 +1075,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
             <String, String>{
               'packSize': packSize.toString(),
               'requested': _formatQuantity(beforeMultiple),
-              'final': _formatQuantity(working),
+              'finalValue': _formatQuantity(working),
             },
           ),
         );
@@ -1163,6 +1318,76 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     _resetToInput(clearText: true);
   }
 
+  bool get _shouldShowBulkFlow {
+    return _bulkFlowOpen ||
+        _stage != QuickOrderStage.input ||
+        _bulkRows.isNotEmpty ||
+        _bulkError != null ||
+        _isBulkParsing ||
+        (_bulkInfoMessage?.isNotEmpty ?? false);
+  }
+
+  void _openBulkFlow() {
+    setState(() => _bulkFlowOpen = true);
+  }
+
+  void _dismissBulkFlow({bool clearText = false}) {
+    setState(() {
+      _bulkFlowOpen = false;
+      _bulkRows = const <_BulkReviewRow>[];
+      _bulkError = null;
+      _bulkInfoMessage = null;
+      _lastBulkSummary = null;
+      _stage = QuickOrderStage.input;
+    });
+    if (clearText) {
+      _bulkInputController.clear();
+    }
+  }
+
+  Widget _buildBulkFlow(String companyId, Set<String>? companyCatalog) {
+    final WrapAlignment alignment =
+        Directionality.of(context) == TextDirection.rtl
+            ? WrapAlignment.end
+            : WrapAlignment.start;
+
+    late final Widget content;
+    switch (_stage) {
+      case QuickOrderStage.input:
+        content = _buildInputStage(alignment);
+        break;
+      case QuickOrderStage.review:
+        content = _buildReviewStage(companyId, companyCatalog, alignment);
+        break;
+      case QuickOrderStage.summary:
+        content = _buildSummaryStage(alignment);
+        break;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _localizedOrDefault('quickOrderBulkAdd', 'הוספה מרוכזת'),
+                style: ATypography.titleSm,
+              ),
+            ),
+            IconButton(
+              tooltip: _localizedOrDefault('commonClose', 'סגירה'),
+              icon: const Icon(Icons.close),
+              onPressed: () => _dismissBulkFlow(clearText: true),
+            ),
+          ],
+        ),
+        const SizedBox(height: ASpacing.sm),
+        content,
+      ],
+    );
+  }
+
   String _friendlyManualEmptyMessage() => _localizedOrDefault(
         'quickOrderBulkReviewEmptyFriendly',
         'לא נמצאו שורות. הזינו SKU וכמות (לדוגמה: DAIRY-001 x 6).',
@@ -1352,118 +1577,6 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
             style: ATypography.titleSm,
           ),
         ],
-      ),
-    );
-  }
-
-  IconData _stageIcon(QuickOrderStage stage) {
-    switch (stage) {
-      case QuickOrderStage.input:
-        return Icons.upload_file;
-      case QuickOrderStage.review:
-        return Icons.rule_folder;
-      case QuickOrderStage.summary:
-        return Icons.fact_check;
-    }
-  }
-
-  String _stageTitle(QuickOrderStage stage) {
-    switch (stage) {
-      case QuickOrderStage.input:
-        return _localizedOrDefault(
-            'quickOrderStageInputTitle', 'שלב 1: ייבוא רשימה');
-      case QuickOrderStage.review:
-        return _localizedOrDefault(
-            'quickOrderStageReviewTitle', 'שלב 2: סקירה ואימות');
-      case QuickOrderStage.summary:
-        return _localizedOrDefault(
-            'quickOrderStageSummaryTitle', 'שלב 3: הוספה לסל');
-    }
-  }
-
-  String _stageSubtitle(QuickOrderStage stage) {
-    switch (stage) {
-      case QuickOrderStage.input:
-        return _localizedOrDefault(
-          'quickOrderStageInputSubtitle',
-          'הדביקו SKU וכמות או העלו CSV',
-        );
-      case QuickOrderStage.review:
-        return _localizedOrDefault(
-          'quickOrderStageReviewSubtitle',
-          'בדקו התאמות וטפלו בשורות החסרות',
-        );
-      case QuickOrderStage.summary:
-        return _localizedOrDefault(
-          'quickOrderStageSummarySubtitle',
-          'אשרו הוספה ונטרו שורות לתיקון',
-        );
-    }
-  }
-
-  Widget _buildStageChip(QuickOrderStage stage) {
-    final bool isCurrent = stage == _stage;
-    final bool isCompleted = stage.index < _stage.index;
-    final Color baseColor = isCurrent
-        ? AColors.primary
-        : isCompleted
-            ? AColors.success
-            : AColors.neutral500;
-    final Color background =
-        baseColor.withValues(alpha: isCurrent ? 0.18 : 0.08);
-    final Color borderColor =
-        baseColor.withValues(alpha: isCurrent ? 0.9 : 0.4);
-    final TextStyle titleStyle = ATypography.bodyMd.copyWith(
-      fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
-      color: baseColor,
-    );
-    final TextStyle subtitleStyle = ATypography.bodySm.copyWith(
-      color: baseColor.withValues(alpha: 0.9),
-    );
-
-    return Container(
-      key: ValueKey<QuickOrderStage>(stage),
-      width: 220,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: ARadii.lg,
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      padding: const EdgeInsetsDirectional.symmetric(
-        horizontal: ASpacing.md,
-        vertical: ASpacing.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_stageIcon(stage), size: 20, color: baseColor),
-              const SizedBox(width: ASpacing.xs),
-              Flexible(child: Text(_stageTitle(stage), style: titleStyle)),
-            ],
-          ),
-          const SizedBox(height: ASpacing.xs),
-          Text(
-            _stageSubtitle(stage),
-            style: subtitleStyle,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStageHeader() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      child: Wrap(
-        spacing: ASpacing.sm,
-        runSpacing: ASpacing.sm,
-        children: QuickOrderStage.values
-            .map<Widget>((stage) => _buildStageChip(stage))
-            .toList(growable: false),
       ),
     );
   }
@@ -1776,22 +1889,6 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
         ),
       ],
     );
-  }
-
-  Widget _buildStageBody(String companyId, Set<String>? companyCatalog) {
-    final WrapAlignment alignment =
-        Directionality.of(context) == TextDirection.rtl
-            ? WrapAlignment.end
-            : WrapAlignment.start;
-
-    switch (_stage) {
-      case QuickOrderStage.input:
-        return _buildInputStage(alignment);
-      case QuickOrderStage.review:
-        return _buildReviewStage(companyId, companyCatalog, alignment);
-      case QuickOrderStage.summary:
-        return _buildSummaryStage(alignment);
-    }
   }
 
   Future<void> _openSuggestionsSheet(int rowIndex) async {
@@ -2338,32 +2435,6 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     );
   }
 
-  Widget _buildBulkTools(String companyId, Set<String>? companyCatalog) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        ASpacing.lg,
-        ASpacing.sm,
-        ASpacing.lg,
-        ASpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildStageHeader(),
-          const SizedBox(height: ASpacing.md),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            child: _buildStageBody(companyId, companyCatalog),
-          ),
-          const SizedBox(height: ASpacing.lg),
-          const Divider(height: 1, thickness: 1, color: AColors.borderSubtle),
-        ],
-      ),
-    );
-  }
-
   Future<void> _addToDraft(ProductSearchResult item) async {
     final double qty = _quantities[item.variant.id] ?? 1;
     final cart = ref.read(cartControllerProvider.notifier);
@@ -2371,8 +2442,16 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     try {
       await cart.addToCart(item.variant, qty: qty);
       if (!mounted) return;
+      final String? draftId = ref.read(cartControllerProvider).draftOrderId;
+      if (draftId != null) {
+        ref.invalidate(cartLinesProvider(draftId));
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('quickOrderAddSuccess'))),
+        SnackBar(
+          content: Text(_t('quickOrderAddSuccess') == 'quickOrderAddSuccess'
+              ? 'נוסף לעגלה'
+              : _t('quickOrderAddSuccess')),
+        ),
       );
       setState(() {
         _quantities[item.variant.id] = 1;
@@ -2452,159 +2531,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     }());
   }
 
-  Widget _buildFilters() {
-    final TextDirection direction = Directionality.of(context);
-    final WrapAlignment alignment = direction == TextDirection.rtl
-        ? WrapAlignment.end
-        : WrapAlignment.start;
-
-    final OutlineInputBorder border = OutlineInputBorder(
-      borderRadius: ARadii.lg,
-      borderSide: const BorderSide(color: AColors.borderSubtle),
-    );
-    final OutlineInputBorder focusedBorder = OutlineInputBorder(
-      borderRadius: ARadii.lg,
-      borderSide: const BorderSide(color: AColors.primary, width: 1.2),
-    );
-
-    InputDecoration denseDecoration(String label) => InputDecoration(
-          labelText: label,
-          border: border,
-          enabledBorder: border,
-          focusedBorder: focusedBorder,
-          isDense: true,
-          filled: true,
-          fillColor: AColors.surface,
-          contentPadding: const EdgeInsetsDirectional.symmetric(
-            horizontal: ASpacing.md,
-            vertical: ASpacing.xs,
-          ),
-        );
-
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        ASpacing.lg,
-        ASpacing.lg,
-        ASpacing.lg,
-        ASpacing.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.qr_code_scanner),
-              labelText: _t('quickOrderPlaceholder'),
-              filled: true,
-              fillColor: AColors.surfaceMuted,
-              border: border,
-              enabledBorder: border,
-              focusedBorder: focusedBorder,
-              contentPadding: const EdgeInsetsDirectional.symmetric(
-                horizontal: ASpacing.md,
-                vertical: ASpacing.sm,
-              ),
-            ),
-            onChanged: _onQueryChanged,
-          ),
-          const SizedBox(height: ASpacing.md),
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double maxWidth = constraints.maxWidth;
-              final bool isCompact = maxWidth < 560;
-              final double numericFieldWidth = isCompact ? maxWidth : 140;
-              final double dropdownWidth = isCompact ? maxWidth : 200;
-
-              Widget wrapField({required double width, required Widget child}) {
-                return SizedBox(
-                  width: width,
-                  child: child,
-                );
-              }
-
-              return Wrap(
-                spacing: ASpacing.sm,
-                runSpacing: ASpacing.sm,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                alignment: alignment,
-                children: [
-                  AChip(
-                    label: _t('filterInStockOnly'),
-                    icon: Icons.inventory,
-                    selected: _inStockOnly,
-                    onSelected: (value) {
-                      setState(() => _inStockOnly = value);
-                      _performSearch(reset: true);
-                    },
-                  ),
-                  wrapField(
-                    width: numericFieldWidth,
-                    child: TextField(
-                      controller: _minPriceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: denseDecoration(_t('filterMinPrice')),
-                      onSubmitted: (_) => _performSearch(reset: true),
-                    ),
-                  ),
-                  wrapField(
-                    width: numericFieldWidth,
-                    child: TextField(
-                      controller: _maxPriceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: denseDecoration(_t('filterMaxPrice')),
-                      onSubmitted: (_) => _performSearch(reset: true),
-                    ),
-                  ),
-                  wrapField(
-                    width: dropdownWidth,
-                    child: DropdownButtonFormField<String?>(
-                      value: _selectedCategory,
-                      icon: const Icon(Icons.expand_more),
-                      isExpanded: true,
-                      decoration: denseDecoration(
-                        _categoriesLoading
-                            ? _t('filterCategoriesLoading')
-                            : _t('filterAllCategoriesShort'),
-                      ),
-                      items: [
-                        DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text(_t('filterAllCategoriesShort')),
-                        ),
-                        ..._categories.map(
-                          (category) => DropdownMenuItem<String?>(
-                            value: category.id,
-                            child: Text(
-                              category.nameHe.isNotEmpty
-                                  ? category.nameHe
-                                  : category.nameEn,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: _categoriesLoading
-                          ? null
-                          : (value) {
-                              setState(() => _selectedCategory = value);
-                              _performSearch(reset: true);
-                            },
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  // Filters UI handled in header/bulk sheet; legacy filter builder removed.
 
   Widget _buildQuantityControl(String variantId, {required bool enabled}) {
     final double quantity = _quantities[variantId] ?? 1;
@@ -2644,6 +2571,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
         companyCatalog != null &&
         !companyCatalog.contains(item.variant.id);
     final String notInCatalogLabel = _t('notInCatalogShort');
+    final double quantity = _quantities[item.variant.id] ?? 1;
 
     return ACard(
       margin: const EdgeInsetsDirectional.symmetric(
@@ -2729,24 +2657,37 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
                 ],
               );
               final Widget? priceTag = item.unitPrice != null
-                  ? DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AColors.primaryMuted,
-                        borderRadius: ARadii.sm,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsetsDirectional.symmetric(
-                          horizontal: ASpacing.sm,
-                          vertical: ASpacing.xs,
-                        ),
-                        child: Text(
-                          currency.format(item.unitPrice),
-                          style: ATypography.bodyMd.copyWith(
-                            color: AColors.primary,
-                            fontWeight: FontWeight.w600,
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsetsDirectional.symmetric(
+                            horizontal: ASpacing.sm,
+                            vertical: ASpacing.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AColors.surfaceMuted,
+                            borderRadius: ARadii.sm,
+                            border: Border.all(color: AColors.cardBorder),
+                          ),
+                          child: Text(
+                            currency.format(item.unitPrice),
+                            style: ATypography.bodyMd.copyWith(
+                              color: AColors.foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
+                        if (quantity > 1) ...[
+                          const SizedBox(height: ASpacing.xs),
+                          Text(
+                            '${quantity.toStringAsFixed(0)} × ${currency.format(item.unitPrice)} = ${currency.format((item.unitPrice ?? 0) * quantity)}',
+                            style: ATypography.bodyXs.copyWith(
+                              color: AColors.mutedForeground,
+                            ),
+                          ),
+                        ],
+                      ],
                     )
                   : null;
               final bool stack = constraints.maxWidth < 360;
@@ -2840,8 +2781,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
   Widget _buildResultsSliver(String companyId, Set<String>? companyCatalog) {
     return _results.when(
       loading: _buildSkeletonSliver,
-      error: (error, _) => SliverFillRemaining(
-        hasScrollBody: false,
+      error: (error, _) => SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(
             ASpacing.page,
@@ -2860,8 +2800,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
       ),
       data: (items) {
         if (items.isEmpty) {
-          return SliverFillRemaining(
-            hasScrollBody: false,
+          return SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(
                 ASpacing.page,
@@ -3007,7 +2946,11 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     );
   }
 
-  Widget _buildBottomArea({required bool canSubmit, required bool isBusy}) {
+  Widget _buildBottomArea({
+    required bool canSubmit,
+    required bool isBusy,
+    required String? checkoutOrderId,
+  }) {
     final MediaQueryData mediaQuery = MediaQuery.of(context);
     final double bottomPadding = math.max(16, mediaQuery.viewPadding.bottom);
 
@@ -3019,8 +2962,15 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildNavigationBar(),
-            if (_currentTab == _QuickOrderTab.quickOrder)
+            QuickOrderNavBar(
+              currentTab: _currentTab,
+              checkoutOrderId: checkoutOrderId,
+              onQuickTabSelected: (QuickNavTab tab) {
+                setState(() => _currentTab = tab);
+              },
+              onCheckoutUnavailable: _showCheckoutUnavailableMessage,
+            ),
+            if (_currentTab == QuickNavTab.quickOrder)
               Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(
                   ASpacing.page,
@@ -3039,96 +2989,6 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
     );
   }
 
-  Widget _buildNavigationBar() {
-    return NavigationBar(
-      height: 68,
-      selectedIndex: _currentTab.index,
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      onDestinationSelected: _handleTabSelection,
-      destinations: _navigationDestinations(),
-    );
-  }
-
-  List<NavigationDestination> _navigationDestinations() {
-    return <NavigationDestination>[
-      _buildDestination(
-        icon: Icons.flash_on_outlined,
-        selectedIcon: Icons.flash_on,
-        label: _t('quickOrderTabQuickOrder'),
-      ),
-      _buildDestination(
-        icon: Icons.history,
-        selectedIcon: Icons.history,
-        label: _t('quickOrderTabReorders'),
-      ),
-      _buildDestination(
-        icon: Icons.storefront_outlined,
-        selectedIcon: Icons.storefront,
-        label: _t('quickOrderTabCatalog'),
-      ),
-      _buildDestination(
-        icon: Icons.category_outlined,
-        selectedIcon: Icons.category,
-        label: _t('quickOrderTabCategories'),
-      ),
-      _buildDestination(
-        icon: Icons.local_offer_outlined,
-        selectedIcon: Icons.local_offer,
-        label: _t('quickOrderTabPromotions'),
-      ),
-      _buildDestination(
-        icon: Icons.shopping_cart_outlined,
-        selectedIcon: Icons.shopping_cart,
-        label: _t('quickOrderTabCart'),
-      ),
-      _buildDestination(
-        icon: Icons.assignment_turned_in_outlined,
-        selectedIcon: Icons.assignment_turned_in,
-        label: _t('quickOrderTabCheckout'),
-      ),
-    ];
-  }
-
-  NavigationDestination _buildDestination({
-    required IconData icon,
-    required IconData selectedIcon,
-    required String label,
-  }) {
-    return NavigationDestination(
-      icon: Icon(icon),
-      selectedIcon: Icon(selectedIcon),
-      label: label,
-    );
-  }
-
-  void _handleTabSelection(int index) {
-    final _QuickOrderTab selected = _QuickOrderTab.values[index];
-    switch (selected) {
-      case _QuickOrderTab.catalog:
-        context.go('/catalog');
-        return;
-      case _QuickOrderTab.promotions:
-        context.go('/promotions');
-        return;
-      case _QuickOrderTab.cart:
-        context.go('/customer/cart');
-        return;
-      case _QuickOrderTab.checkout:
-        final String? draftId = ref.read(cartControllerProvider).draftOrderId;
-        if (draftId == null) {
-          _showCheckoutUnavailableMessage();
-          return;
-        }
-        context.go('/customer/cart/checkout', extra: draftId);
-        return;
-      case _QuickOrderTab.quickOrder:
-      case _QuickOrderTab.reorders:
-      case _QuickOrderTab.categories:
-        setState(() => _currentTab = selected);
-        return;
-    }
-  }
-
   void _showCheckoutUnavailableMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(_t('quickOrderCheckoutUnavailable'))),
@@ -3138,32 +2998,83 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
   Widget _buildActiveTabContent(
     String companyId,
     Set<String>? companyCatalog,
+    int cartItems,
+    double cartTotal,
   ) {
     switch (_currentTab) {
-      case _QuickOrderTab.quickOrder:
-        return _buildQuickOrderBody(companyId, companyCatalog);
-      case _QuickOrderTab.reorders:
+      case QuickNavTab.quickOrder:
+        return _buildQuickOrderBody(
+          companyId,
+          companyCatalog,
+          cartItems,
+          cartTotal,
+        );
+      case QuickNavTab.reorders:
         return _buildReorderTab();
-      case _QuickOrderTab.categories:
+      case QuickNavTab.categories:
         return _buildCategoriesTab();
-      case _QuickOrderTab.catalog:
-      case _QuickOrderTab.promotions:
-      case _QuickOrderTab.cart:
-      case _QuickOrderTab.checkout:
-        return _buildQuickOrderBody(companyId, companyCatalog);
+      case QuickNavTab.catalog:
+      case QuickNavTab.promotions:
+      case QuickNavTab.cart:
+      case QuickNavTab.checkout:
+        return _buildQuickOrderBody(
+          companyId,
+          companyCatalog,
+          cartItems,
+          cartTotal,
+        );
     }
   }
 
   Widget _buildQuickOrderBody(
     String companyId,
     Set<String>? companyCatalog,
+    int cartItems,
+    double cartTotal,
   ) {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
-        if (widget.showFilters) SliverToBoxAdapter(child: _buildFilters()),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              ASpacing.page,
+              ASpacing.lg,
+              ASpacing.page,
+              ASpacing.sm,
+            ),
+            child: _QuickOrderHeader(
+              onBulkTap: _openBulkFlow,
+              onSearchTap: () => context.go('/catalog/search'),
+            ),
+          ),
+        ),
+        if (widget.showFilters)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                ASpacing.page,
+                ASpacing.sm,
+                ASpacing.page,
+                ASpacing.sm,
+              ),
+              child: _buildFiltersBar(),
+            ),
+          ),
+        if (_shouldShowBulkFlow)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(
+                ASpacing.page,
+                ASpacing.sm,
+                ASpacing.page,
+                ASpacing.md,
+              ),
+              child: _buildBulkFlow(companyId, companyCatalog),
+            ),
+          ),
         SliverToBoxAdapter(
           child: OfflineSyncBanner(
             padding: const EdgeInsetsDirectional.fromSTEB(
@@ -3175,10 +3086,60 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
           ),
         ),
         SliverToBoxAdapter(
-          child: _buildBulkTools(companyId, companyCatalog),
+          child: _SummaryBanner(
+            itemCount: cartItems,
+            total: cartTotal,
+            onTap: () => context.go('/customer/cart'),
+          ),
         ),
         _buildResultsSliver(companyId, companyCatalog),
       ],
+    );
+  }
+
+  Widget _buildFiltersBar() {
+    final String label = _localizedOrDefault(
+      'quickOrderCategoryFilter',
+      'קטגוריה',
+    );
+    final String allLabel = _localizedOrDefault(
+      'quickOrderCategoryAll',
+      'כל הקטגוריות',
+    );
+    final List<DropdownMenuItem<String?>> items = [
+      DropdownMenuItem<String?>(
+        value: null,
+        child: Text(allLabel),
+      ),
+      ..._categories.map(
+        (category) => DropdownMenuItem<String?>(
+          value: category.id,
+          child: Text(
+            category.nameHe.isNotEmpty ? category.nameHe : category.nameEn,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    ];
+
+    return DropdownButtonFormField<String?>(
+      value: _selectedCategory,
+      items: items,
+      isExpanded: true,
+      onChanged: _categoriesLoading
+          ? null
+          : (String? value) {
+              setState(() => _selectedCategory = value);
+              _performSearch(reset: true);
+            },
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: ARadii.md),
+        contentPadding: const EdgeInsetsDirectional.symmetric(
+          horizontal: ASpacing.md,
+          vertical: ASpacing.sm,
+        ),
+      ),
     );
   }
 
@@ -3249,7 +3210,7 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
   void _handleCategorySelected(String? categoryId) {
     setState(() {
       _selectedCategory = categoryId;
-      _currentTab = _QuickOrderTab.quickOrder;
+      _currentTab = QuickNavTab.quickOrder;
     });
     _performSearch(reset: true);
   }
@@ -3272,12 +3233,20 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
       data: (lines) => lines.isNotEmpty,
       orElse: () => false,
     );
+    final List<CartLine> cartLines =
+        cartLinesAsync.asData?.value ?? const <CartLine>[];
+    final double cartTotal = cartLines.fold<double>(
+      0,
+      (double running, CartLine line) => running + line.lineTotal,
+    );
 
     final bool footerBusy = cartState.isLoading || _submittingDraft;
     final bool canSubmit = hasLines && _sessionAdditions > 0;
     final Widget body = _buildActiveTabContent(
       companyId,
       companyCatalog,
+      cartLines.length,
+      cartTotal,
     );
 
     return Scaffold(
@@ -3287,7 +3256,140 @@ class _QuickOrderPageState extends ConsumerState<QuickOrderPage> {
       bottomNavigationBar: _buildBottomArea(
         canSubmit: canSubmit,
         isBusy: footerBusy,
+        checkoutOrderId: cartState.draftOrderId,
       ),
+    );
+  }
+}
+
+class _SummaryBanner extends StatelessWidget {
+  const _SummaryBanner({
+    required this.itemCount,
+    required this.total,
+    required this.onTap,
+  });
+
+  final int itemCount;
+  final double total;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final intl.NumberFormat currency =
+        intl.NumberFormat.currency(symbol: '₪', decimalDigits: 2);
+    final String itemsLabel =
+        itemCount == 0 ? 'אין פריטים בסל' : '$itemCount פריטים בסל';
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        ASpacing.page,
+        ASpacing.sm,
+        ASpacing.page,
+        ASpacing.md,
+      ),
+      child: InkWell(
+        borderRadius: ARadii.lg,
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AColors.surface,
+            borderRadius: ARadii.lg,
+            border: Border.all(color: AColors.cardBorder),
+            boxShadow: AElevation.shadowSoft,
+          ),
+          padding: const EdgeInsets.all(ASpacing.lg),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      itemsLabel,
+                      style: ATypography.bodyMd.copyWith(
+                        color: AColors.foreground,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: ASpacing.xs),
+                    Text(
+                      currency.format(total),
+                      style: ATypography.titleMd.copyWith(
+                        color: AColors.foreground,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: ASpacing.md),
+              AButton.primary(
+                label: 'לסל',
+                size: AButtonSize.compact,
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: onTap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickOrderHeader extends StatelessWidget {
+  const _QuickOrderHeader({
+    required this.onBulkTap,
+    required this.onSearchTap,
+  });
+
+  final VoidCallback onBulkTap;
+  final VoidCallback onSearchTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final MarketplaceLocalizations? l10n =
+        Localizations.of<MarketplaceLocalizations>(
+      context,
+      MarketplaceLocalizations,
+    );
+    final String title =
+        l10n?.translate('quickOrderRecentTitle') ?? 'רכישות חוזרות';
+    final String bulkLabel =
+        l10n?.translate('quickOrderBulkAdd') ?? 'הוספה מרוכזת';
+    final String searchLabel =
+        l10n?.translate('homeSearchPlaceholder') ?? 'חיפוש / סריקה';
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool stack = constraints.maxWidth < 420;
+        final Widget primary = AButton.ghost(
+          label: '$title · $searchLabel',
+          icon: const Icon(Icons.history),
+          onPressed: onSearchTap,
+          expand: true,
+        );
+        final Widget secondary = AButton.secondary(
+          label: bulkLabel,
+          icon: const Icon(Icons.upload_file_outlined),
+          onPressed: onBulkTap,
+        );
+        if (stack) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              primary,
+              const SizedBox(height: ASpacing.sm),
+              secondary,
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: primary),
+            const SizedBox(width: ASpacing.sm),
+            secondary,
+          ],
+        );
+      },
     );
   }
 }

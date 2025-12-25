@@ -5,6 +5,7 @@ import 'package:ashachar_marketplace/src/features/catalog/data/catalog_repositor
 import 'package:ashachar_marketplace/src/features/catalog/domain/catalog_models.dart';
 import 'package:ashachar_marketplace/src/features/catalog/domain/paged_products.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_page.dart';
+import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/pricing/price_resolution_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../test_utils/fake_session_controller.dart';
 import '../test_utils/offline_supabase.dart';
+import '../quick_order/quick_order_test_utils.dart' show FakeOrdersRepository;
 
 class _FakeCatalogRepository implements CatalogRepository {
   _FakeCatalogRepository(this.products);
@@ -147,6 +149,7 @@ void main() {
         overrides: [
           catalogRepositoryProvider
               .overrideWithValue(_FakeCatalogRepository([product])),
+          ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
           priceResolutionServiceProvider
               .overrideWithValue(_FakePriceResolutionService()),
           sessionControllerProvider.overrideWith(

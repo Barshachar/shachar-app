@@ -85,7 +85,12 @@ final debugFeaturesEnabledProvider = Provider<bool>((ref) {
     data: (config) => config.isDebug,
     orElse: () => false,
   );
-  return kDebugMode || configDebug;
+  const bool envDebug =
+      bool.fromEnvironment('ENABLE_DEBUG_FEATURES', defaultValue: false);
+  if (kReleaseMode) {
+    return false;
+  }
+  return kDebugMode && (configDebug || envDebug);
 });
 
 Future<JsonMap> _loadConfig() async {

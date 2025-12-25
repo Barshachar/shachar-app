@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
+
 final rfqServiceProvider = Provider<RfqRemoteService>((ref) {
-  return RfqRemoteService(Supabase.instance.client);
+  return RfqRemoteService(ref.read(supabaseClientProvider));
 });
 
 final customerRfqsProvider =

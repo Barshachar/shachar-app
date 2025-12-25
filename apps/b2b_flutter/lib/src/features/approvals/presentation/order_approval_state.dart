@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
+
 /// Describes the approval stage for an order/draft.
 @immutable
 class OrderApprovalState {
@@ -95,19 +97,24 @@ class OrderApprovalState {
     required Map<String, dynamic> row,
   }) {
     final Map<String, dynamic> data = Map<String, dynamic>.from(row);
-    final bool requiresApproval = _asBool(data['requires_approval']);
-    final String rawStatus = _asString(data['approval_status']) ?? '';
+    final String rawStatus =
+        _asString(data['status'] ?? data['approval_status']) ?? '';
     final String? note = _asString(
-      data['approval_note'] ??
+      data['notes'] ??
+          data['approval_note'] ??
           data['approval_reason'] ??
           data['rejection_note'],
     );
-    final DateTime? sentAt = _asDateTime(data['approval_sent_at']);
+    final DateTime? sentAt =
+        _asDateTime(data['created_at'] ?? data['approval_sent_at']);
     final DateTime? resolvedAt = _asDateTime(
-        data['approval_resolved_at'] ?? data['approval_decided_at']);
+      data['reviewed_at'] ??
+          data['approval_resolved_at'] ??
+          data['approval_decided_at'],
+    );
     return OrderApprovalState(
       orderId: orderId,
-      requiresApproval: requiresApproval,
+      requiresApproval: true,
       rawStatus: rawStatus,
       note: note,
       sentAt: sentAt,
@@ -130,46 +137,54 @@ final orderApprovalProvider = FutureProvider.autoDispose
     return OrderApprovalState.notRequired(orderId);
   }
 
-  final SupabaseClient client = Supabase.instance.client;
+  final SupabaseClient client = ref.read(supabaseClientProvider);
   try {
-    final dynamic response = await client
+    final dynamic orderResponse = await client
         .from('orders')
-        .select(
-          'id, requires_approval, approval_status, approval_note,'
-          ' approval_reason, rejection_note, approval_sent_at, approval_resolved_at,'
-          ' approval_decided_at',
-        )
+        .select('id, status')
         .eq('id', orderId)
         .maybeSingle();
 
-    if (response == null) {
+    if (orderResponse == null) {
       throw StateError('Order $orderId not found');
     }
 
-    if (response is! Map<String, dynamic>) {
+    if (orderResponse is! Map<String, dynamic>) {
       throw StateError('Unexpected response for order $orderId');
     }
 
-    return OrderApprovalState.fromRow(orderId: orderId, row: response);
+    final String orderStatus = _asString(orderResponse['status']) ?? '';
+
+    final dynamic requestResponse = await client
+        .from('approval_requests')
+        .select('id, status, notes, created_at, reviewed_at')
+        .eq('entity_type', 'order')
+        .eq('entity_id', orderId)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (requestResponse == null) {
+      if (!_requiresApprovalForStatus(orderStatus)) {
+        return OrderApprovalState.notRequired(orderId);
+      }
+      return OrderApprovalState(
+        orderId: orderId,
+        requiresApproval: true,
+        rawStatus: orderStatus.isEmpty ? 'draft' : orderStatus,
+      );
+    }
+
+    if (requestResponse is! Map<String, dynamic>) {
+      throw StateError('Unexpected approval response for order $orderId');
+    }
+
+    return OrderApprovalState.fromRow(orderId: orderId, row: requestResponse);
   } on PostgrestException catch (error, stackTrace) {
     debugPrint('orderApprovalProvider error: ${error.message}');
     Error.throwWithStackTrace(error, stackTrace);
   }
 });
-
-bool _asBool(Object? value) {
-  if (value is bool) {
-    return value;
-  }
-  if (value is num) {
-    return value != 0;
-  }
-  if (value is String) {
-    final String normalized = value.trim().toLowerCase();
-    return normalized == 'true' || normalized == '1' || normalized == 'yes';
-  }
-  return false;
-}
 
 String? _asString(Object? value) {
   if (value == null) {
@@ -196,4 +211,21 @@ DateTime? _asDateTime(Object? value) {
     }
   }
   return null;
+}
+
+bool _requiresApprovalForStatus(String status) {
+  final String normalized = status.trim().toLowerCase();
+  if (normalized.isEmpty) {
+    return true;
+  }
+  if (normalized == 'draft') {
+    return true;
+  }
+  if (normalized.contains('approval')) {
+    return true;
+  }
+  if (normalized == 'pending') {
+    return true;
+  }
+  return false;
 }

@@ -14,6 +14,7 @@ create type user_role as enum ('admin','vendor_admin','vendor_user','customer_ad
 create type price_list_scope as enum ('global','customer');
 create type order_status as enum ('draft','placed','confirmed','picking','shipped','delivered','cancelled');
 create type shipment_status as enum ('pending','ready','in_transit','delivered','cancelled');
+create type return_status as enum ('requested','approved','rejected','received','refunded');
 
 create table companies (
     id uuid primary key default uuid_generate_v4(),
@@ -307,6 +308,9 @@ create table orders (
     customer_company_id uuid not null references companies(id) on delete cascade,
     created_by uuid not null references auth.users(id),
     status order_status not null default 'draft',
+    cancelled_at timestamptz,
+    cancelled_by uuid references auth.users(id),
+    cancellation_reason text,
     delivery_window daterange,
     notes text,
     currency text not null default 'ILS',
@@ -319,6 +323,8 @@ create table orders (
 );
 create index orders_company_status_idx on orders(customer_company_id, status);
 create index orders_created_at_idx on orders(created_at desc);
+create index orders_cancelled_at_idx on orders(cancelled_at desc)
+  where cancelled_at is not null;
 
 create table order_items (
     id uuid primary key default uuid_generate_v4(),
@@ -346,14 +352,133 @@ create table shipments (
     updated_at timestamptz not null default now()
 );
 
+create table payment_events (
+    id uuid primary key default uuid_generate_v4(),
+    provider text not null,
+    transaction_id text not null,
+    order_id uuid references orders(id) on delete set null,
+    payload jsonb default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    unique(provider, transaction_id)
+);
+create index if not exists idx_payment_events_order_id on payment_events(order_id);
+create index if not exists idx_payment_events_created_at on payment_events(created_at);
+
+create table vendor_ratings (
+    id uuid primary key default uuid_generate_v4(),
+    vendor_company_id uuid not null references companies(id) on delete cascade,
+    customer_company_id uuid not null references companies(id) on delete cascade,
+    order_id uuid not null references orders(id) on delete cascade,
+    rating int not null,
+    comment text,
+    created_by uuid not null references auth.users(id),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint vendor_ratings_rating_range check (rating >= 1 and rating <= 5),
+    constraint vendor_ratings_unique unique (order_id, vendor_company_id, customer_company_id)
+);
+create index vendor_ratings_vendor_idx on vendor_ratings(vendor_company_id, created_at desc);
+create index vendor_ratings_customer_idx on vendor_ratings(customer_company_id, created_at desc);
+create index vendor_ratings_order_idx on vendor_ratings(order_id);
+
 create table returns (
     id uuid primary key default uuid_generate_v4(),
     order_id uuid not null references orders(id) on delete cascade,
     item_id uuid not null references order_items(id) on delete cascade,
     reason text,
     qty numeric(14,3) not null,
-    created_at timestamptz not null default now()
+    status return_status not null default 'requested',
+    created_by uuid not null references auth.users(id),
+    resolved_by uuid references auth.users(id),
+    resolution_note text,
+    resolved_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint returns_qty_positive check (qty > 0)
 );
+create index returns_order_idx on returns(order_id);
+create index returns_item_idx on returns(item_id);
+create index returns_status_idx on returns(status);
+
+create or replace function log_return_audit() returns trigger as $$
+begin
+  if tg_op = 'INSERT' then
+    insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+    values (
+      coalesce(auth.uid(), new.resolved_by, new.created_by),
+      'return_requested',
+      'returns',
+      new.id,
+      jsonb_build_object(
+        'order_id',
+        new.order_id,
+        'item_id',
+        new.item_id,
+        'qty',
+        new.qty,
+        'status',
+        new.status
+      )
+    );
+  elsif tg_op = 'UPDATE' and new.status is distinct from old.status then
+    insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+    values (
+      coalesce(auth.uid(), new.resolved_by, new.created_by),
+      'return_status_updated',
+      'returns',
+      new.id,
+      jsonb_build_object(
+        'order_id',
+        new.order_id,
+        'item_id',
+        new.item_id,
+        'from',
+        old.status,
+        'to',
+        new.status
+      )
+    );
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, auth;
+
+create trigger returns_audit_log
+  after insert or update on returns
+  for each row execute function log_return_audit();
+
+create or replace function log_order_cancellation() returns trigger as $$
+begin
+  insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+  values (
+    coalesce(auth.uid(), new.cancelled_by, new.created_by),
+    'order_cancelled',
+    'orders',
+    new.id,
+    jsonb_build_object(
+      'order_id',
+      new.id,
+      'from',
+      old.status,
+      'reason',
+      new.cancellation_reason,
+      'cancelled_by',
+      new.cancelled_by,
+      'cancelled_at',
+      new.cancelled_at
+    )
+  );
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, auth;
+
+create trigger orders_cancelled_audit
+  after update on orders
+  for each row
+  when (new.status = 'cancelled' and (old.status is distinct from new.status))
+  execute function log_order_cancellation();
 
 create table promotions (
     id uuid primary key default uuid_generate_v4(),
@@ -515,6 +640,267 @@ end;
 $$;
 
 grant execute on function auth_role() to authenticated, anon, service_role;
+
+create or replace view order_approvals_inbox as
+select
+  ar.id as step_id,
+  ar.entity_id as order_id,
+  o.order_number,
+  o.total,
+  o.currency,
+  ar.created_at as requested_at,
+  ar.status,
+  coalesce(u.raw_user_meta_data->>'full_name', u.email) as requested_by,
+  c.name as buyer_name,
+  ar.notes as note
+from approval_requests ar
+join orders o on o.id = ar.entity_id
+join companies c on c.id = ar.company_id
+left join auth.users u on u.id = ar.requester_user_id
+where ar.entity_type = 'order'
+  and ar.status = 'pending'
+  and (
+    auth_role() = 'admin'
+    or (
+      ar.company_id = auth_company_id()
+      and ar.approver_user_id = auth.uid()
+    )
+  );
+
+grant select on order_approvals_inbox to authenticated;
+
+create or replace function rpc_approvals_inbox()
+returns table (
+  step_id uuid,
+  order_id uuid,
+  order_number text,
+  total numeric,
+  currency text,
+  requested_at timestamptz,
+  status text,
+  requested_by text,
+  buyer_name text,
+  note text
+)
+language sql
+security definer
+set search_path = public, auth
+as $$
+  select
+    step_id,
+    order_id,
+    order_number,
+    total,
+    currency,
+    requested_at,
+    status,
+    requested_by,
+    buyer_name,
+    note
+  from order_approvals_inbox
+  order by requested_at desc;
+$$;
+
+grant execute on function rpc_approvals_inbox() to authenticated;
+
+create or replace function rpc_evaluate_approvals(p_order_id uuid)
+returns jsonb as $$
+declare
+  v_user uuid := auth.uid();
+  v_role user_role := auth_role();
+  v_company uuid := auth_company_id();
+  v_order orders%rowtype;
+  v_request approval_requests%rowtype;
+  v_approver uuid;
+begin
+  if v_user is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+
+  if v_role not in ('admin','customer_admin','buyer') then
+    raise exception 'Role % not permitted for approvals', v_role;
+  end if;
+
+  select *
+    into v_order
+    from orders
+   where id = p_order_id;
+
+  if not found then
+    raise exception 'Order % not found', p_order_id;
+  end if;
+
+  if v_role <> 'admin' and v_order.customer_company_id <> v_company then
+    raise exception 'Tenant violation for order %', p_order_id using errcode = '42501';
+  end if;
+
+  select *
+    into v_request
+    from approval_requests
+   where entity_type = 'order'
+     and entity_id = p_order_id
+   order by created_at desc
+   limit 1;
+
+  if v_request.id is not null then
+    return jsonb_build_object(
+      'order_id', p_order_id,
+      'request_id', v_request.id,
+      'status', v_request.status,
+      'requested_at', v_request.created_at,
+      'approver_user_id', v_request.approver_user_id
+    );
+  end if;
+
+  select cu.user_id
+    into v_approver
+    from company_users cu
+   where cu.company_id = v_order.customer_company_id
+     and cu.role = 'customer_admin'
+     and cu.user_id <> v_user
+   order by cu.user_id
+   limit 1;
+
+  if v_approver is null then
+    v_approver := v_user;
+  end if;
+
+  insert into approval_requests (
+    requester_user_id,
+    approver_user_id,
+    company_id,
+    request_type,
+    entity_type,
+    entity_id,
+    status,
+    notes,
+    created_at,
+    updated_at
+  )
+  values (
+    v_user,
+    v_approver,
+    v_order.customer_company_id,
+    'order_approval',
+    'order',
+    p_order_id,
+    'pending',
+    null,
+    now(),
+    now()
+  )
+  returning * into v_request;
+
+  insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+  values (
+    v_user,
+    'approval_request_created',
+    'approval_requests',
+    v_request.id,
+    jsonb_build_object('order_id', p_order_id, 'approver_user_id', v_approver)
+  );
+
+  return jsonb_build_object(
+    'order_id', p_order_id,
+    'request_id', v_request.id,
+    'status', v_request.status,
+    'requested_at', v_request.created_at,
+    'approver_user_id', v_approver
+  );
+end;
+$$ language plpgsql
+   security definer
+   set search_path = public, auth;
+
+grant execute on function rpc_evaluate_approvals(uuid) to authenticated;
+
+create or replace function rpc_approve_step(
+  p_step_id uuid,
+  p_order_id uuid,
+  p_decision text,
+  p_note text
+) returns jsonb as $$
+declare
+  v_user uuid := auth.uid();
+  v_role user_role := auth_role();
+  v_company uuid := auth_company_id();
+  v_request approval_requests%rowtype;
+  v_status text;
+begin
+  if v_user is null then
+    raise exception 'Authentication required' using errcode = '28000';
+  end if;
+
+  select *
+    into v_request
+    from approval_requests
+   where id = p_step_id
+   for update;
+
+  if not found then
+    raise exception 'Approval request % not found', p_step_id;
+  end if;
+
+  if v_role <> 'admin' then
+    if v_request.company_id <> v_company then
+      raise exception 'Tenant violation for request %', p_step_id using errcode = '42501';
+    end if;
+
+    if v_request.approver_user_id <> v_user then
+      raise exception 'Request % assigned to a different approver', p_step_id using errcode = '42501';
+    end if;
+  end if;
+
+  if v_request.entity_type <> 'order' or v_request.entity_id <> p_order_id then
+    raise exception 'Approval request % does not match order %', p_step_id, p_order_id;
+  end if;
+
+  if v_request.status <> 'pending' then
+    raise exception 'Approval request already resolved';
+  end if;
+
+  if p_decision is null then
+    raise exception 'Decision required';
+  end if;
+
+  if lower(p_decision) in ('approve','approved','accept') then
+    v_status := 'approved';
+  elsif lower(p_decision) in ('reject','rejected','decline','denied') then
+    v_status := 'rejected';
+  else
+    raise exception 'Unknown decision %', p_decision;
+  end if;
+
+  update approval_requests
+     set status = v_status,
+         notes = coalesce(nullif(p_note, ''), notes),
+         reviewed_at = now(),
+         updated_at = now()
+   where id = v_request.id
+   returning * into v_request;
+
+  insert into audit_log(actor_user_id, action, table_name, row_id, metadata)
+  values (
+    v_user,
+    case when v_status = 'approved' then 'approval_request_approved' else 'approval_request_rejected' end,
+    'approval_requests',
+    v_request.id,
+    jsonb_build_object('order_id', v_request.entity_id, 'decision', v_status)
+  );
+
+  return jsonb_build_object(
+    'request_id', v_request.id,
+    'order_id', v_request.entity_id,
+    'status', v_request.status,
+    'reviewed_at', v_request.reviewed_at
+  );
+end;
+$$ language plpgsql
+   security definer
+   set search_path = public, auth;
+
+grant execute on function rpc_approve_step(uuid, uuid, text, text) to authenticated;
+
 create or replace function order_has_vendor(p_order_id uuid, p_vendor uuid)
 returns boolean
 language sql
@@ -650,6 +1036,16 @@ select
 from order_items oi
 join orders o on o.id = oi.order_id
 group by oi.vendor_company_id, o.id;
+
+create or replace view vendor_rating_summary with (security_barrier=true) as
+select
+  vendor_company_id,
+  round(avg(rating)::numeric, 2) as average_rating,
+  count(*)::int as ratings_count,
+  max(created_at) as last_rating_at
+from vendor_ratings
+where auth_role() is not null
+group by vendor_company_id;
 
 create view secure_effective_prices with (security_barrier=true) as
 select *

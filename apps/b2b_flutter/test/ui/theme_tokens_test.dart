@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('core color tokens match design system palette', () {
-    expect(AColors.primary, const Color(0xFFC93A2F));
-    expect(AColors.foreground, const Color(0xFF111827));
-    expect(AColors.background, const Color(0xFFF7F9F7));
-    expect(AColors.success, const Color(0xFF16A34A));
+    expect(AColors.primary, const Color(0xFF0CECDD));
+    expect(AColors.foreground, const Color(0xFF0B1224));
+    expect(AColors.background, const Color(0xFFF4F7FD));
+    expect(AColors.success, const Color(0xFF22C55E));
   });
 
   test('spacing scale and helpers stay consistent', () {

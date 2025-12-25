@@ -7,7 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/components.dart';
 import 'package:ashachar_marketplace/src/app/theme/tokens.dart';
+import 'package:ashachar_marketplace/src/core/errors/user_friendly_error_handler.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_provider.dart';
 
 typedef ApprovalsDecisionSender = Future<void> Function({
@@ -19,7 +21,7 @@ typedef ApprovalsDecisionSender = Future<void> Function({
 
 final approvalsDecisionSenderProvider =
     Provider<ApprovalsDecisionSender>((ref) {
-  final SupabaseClient client = Supabase.instance.client;
+  final SupabaseClient client = ref.read(supabaseClientProvider);
   return ({
     required String stepId,
     required String orderId,
@@ -179,7 +181,7 @@ class _ApprovalsInboxPageState extends ConsumerState<ApprovalsInboxPage> {
   ) {
     final String title =
         l10n?.translate('approvalsInboxErrorTitle') ?? 'Inbox unavailable';
-    final String message = error.toString();
+    final String message = error.userFriendlyMessage;
 
     return Center(
       child: Padding(

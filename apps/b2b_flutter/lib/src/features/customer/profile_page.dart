@@ -45,8 +45,7 @@ class ProfilePage extends ConsumerWidget {
                         radius: 50,
                         backgroundColor: AColors.primary,
                         child: Text(
-                          profile.displayName?.substring(0, 1).toUpperCase() ??
-                              profile.email.substring(0, 1).toUpperCase(),
+                          _profileInitial(profile),
                           style: ATypography.titleLg.copyWith(
                             color: Colors.white,
                             fontSize: 32,
@@ -305,6 +304,18 @@ class ProfilePage extends ConsumerWidget {
       case UserRole.buyer:
         return 'קונה';
     }
+  }
+
+  String _profileInitial(UserProfile profile) {
+    final String displayName = (profile.displayName ?? '').trim();
+    if (displayName.isNotEmpty) {
+      return displayName[0].toUpperCase();
+    }
+    final String email = profile.email.trim();
+    if (email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return '?';
   }
 }
 

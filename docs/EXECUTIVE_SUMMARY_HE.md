@@ -88,7 +88,7 @@
 
 #### 1.1 טוקנים עיצוביים (7 קבצים)
 ```
-app/lib/src/design_system/tokens/
+apps/b2b_flutter/lib/src/design_system/tokens/
 ├── colors.dart          ✓ 80+ צבעים סמנטיים
 ├── typography.dart      ✓ תמיכה עברית/אנגלית מלאה
 ├── spacing.dart         ✓ מערכת 4px סטנדרטית
@@ -106,7 +106,7 @@ app/lib/src/design_system/tokens/
 
 #### 1.2 רכיבי UI (10 קבצים)
 ```
-app/lib/src/design_system/components/
+apps/b2b_flutter/lib/src/design_system/components/
 ├── button.dart          ✓ 6 וריאנטים, 4 גדלים
 ├── input.dart           ✓ כל סוגי הקלט
 ├── card.dart            ✓ 3 וריאנטים
@@ -132,7 +132,7 @@ app/lib/src/design_system/components/
 **4 קבצים | ~1,200 שורות**
 
 ```
-app/lib/src/security/
+apps/b2b_flutter/lib/src/security/
 ├── mfa/
 │   └── totp_service.dart        ✓ אימות דו-שלבי (2FA/MFA)
 ├── session/
@@ -186,7 +186,7 @@ app/lib/src/security/
 **2 קבצים | ~800 שורות**
 
 ```
-app/lib/src/monitoring/
+apps/b2b_flutter/lib/src/monitoring/
 ├── error_tracking.dart      ✓ מעקב שגיאות
 └── analytics_service.dart   ✓ אנליטיקה
 ```
@@ -222,7 +222,7 @@ app/lib/src/monitoring/
 **2 קבצים | ~1,000 שורות**
 
 ```
-app/lib/src/performance/
+apps/b2b_flutter/lib/src/performance/
 ├── cache_manager.dart       ✓ מערכת Cache מתקדמת
 └── network/
     └── retry_policy.dart    ✓ טיפול בתקשורת
@@ -257,7 +257,7 @@ app/lib/src/performance/
 **2 קבצים | ~1,500 שורות**
 
 ```
-app/lib/src/utils/
+apps/b2b_flutter/lib/src/utils/
 ├── formatters.dart      ✓ פורמטרים מקצועיים
 └── validators.dart      ✓ ולידציה מקיפה
 ```
@@ -297,7 +297,7 @@ app/lib/src/utils/
 **1 קובץ | ~600 שורות**
 
 ```
-app/lib/src/admin/dashboard/
+apps/b2b_flutter/lib/src/admin/dashboard/
 └── metrics_card.dart    ✓ ויג'טים מתקדמים
 ```
 

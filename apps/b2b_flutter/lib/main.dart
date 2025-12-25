@@ -5,7 +5,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:ashachar_marketplace/src/app/app_bootstrap.dart';
+import 'package:ashachar_marketplace/src/app/app_state.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
+import 'package:ashachar_marketplace/src/core/localization/generated/app_localizations.dart';
 import 'package:ashachar_marketplace/src/core/offline/offline_toolkit_overrides.dart';
 import 'package:ashachar_marketplace/src/router/app_router.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
@@ -53,7 +55,7 @@ Future<void> main() async {
   const String env = String.fromEnvironment('ENV', defaultValue: 'prod');
   debugPrint('[NAV] initial=$initialRoute (ENV=$env)');
   final container = ProviderContainer(
-    overrides: buildOfflineToolkitOverrides() as dynamic,
+    overrides: [...buildOfflineToolkitOverrides()],
   );
   final Future<void> bootstrapFuture =
       AppBootstrap(container: container).initialize();
@@ -183,17 +185,22 @@ class MarketplaceApp extends ConsumerWidget {
       darkTheme: theme.darkTheme,
       themeMode: theme.mode,
       debugShowCheckedModeBanner: false,
-      supportedLocales: const [
-        Locale('he'),
-        Locale('en'),
-      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       locale: ref.watch(localeProvider),
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         MarketplaceLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) {
+        // Disable semantics to avoid simulator-only assertions in nested scrollables.
+        return ExcludeSemantics(
+          excluding: true,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

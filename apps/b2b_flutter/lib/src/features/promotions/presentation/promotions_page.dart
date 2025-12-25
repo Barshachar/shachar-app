@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/features/promotions/data/promotions_repository.dart';
+import 'package:ashachar_marketplace/src/features/catalog/presentation/quick_order_page.dart';
+import 'package:ashachar_marketplace/src/features/orders/presentation/cart_controller.dart';
 
 /// Simple UI-only model representing a promotion card on the buyer list.
 @immutable
@@ -70,6 +72,7 @@ class PromotionsPage extends ConsumerWidget {
         translate('promotionsValidUntil', 'Valid until {date}');
     final String termsApplyTemplate =
         translate('promotionsTermsApply', 'Terms apply {terms}');
+    final cartState = ref.watch(cartControllerProvider);
 
     return Scaffold(
       key: const ValueKey('promotions_list_root'),
@@ -85,6 +88,10 @@ class PromotionsPage extends ConsumerWidget {
             }
           },
         ),
+      ),
+      bottomNavigationBar: QuickOrderNavBar(
+        currentTab: QuickNavTab.promotions,
+        checkoutOrderId: cartState.draftOrderId,
       ),
       body: SafeArea(
         child: promotionsAsync.when(

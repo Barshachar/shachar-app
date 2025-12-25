@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:ashachar_marketplace/src/core/supabase/supabase_client_provider.dart';
+
 @immutable
 class ApprovalRequest {
   const ApprovalRequest({
@@ -70,23 +72,33 @@ class ApprovalRequest {
 
 final approvalsInboxProvider =
     FutureProvider.autoDispose<List<ApprovalRequest>>((ref) async {
-  final SupabaseClient client = Supabase.instance.client;
+  const Duration timeout = Duration(seconds: 12);
+  final SupabaseClient client = ref.read(supabaseClientProvider);
   final Stopwatch stopwatch = Stopwatch()..start();
   try {
-    final dynamic response =
-        await client.rpc<dynamic>('rpc_approvals_inbox').timeout(
-              const Duration(seconds: 8),
-              onTimeout: () =>
-                  throw TimeoutException('Approvals request timed out'),
-            );
-    return _parseApprovalsResponse(response);
-  } on PostgrestException catch (error) {
-    if (!_isUndefinedFunction(error)) {
-      rethrow;
-    }
+    return await _loadInbox(client).timeout(
+      timeout,
+      onTimeout: () =>
+          throw TimeoutException('Approvals inbox timed out after $timeout'),
+    );
   } finally {
     stopwatch.stop();
     _recordInboxTelemetry(stopwatch.elapsed, success: true);
+  }
+});
+
+Future<List<ApprovalRequest>> _loadInbox(SupabaseClient client) async {
+  try {
+    final List<ApprovalRequest>? rpc = await _fetchViaRpc(client);
+    if (rpc != null) {
+      return rpc;
+    }
+  } on TimeoutException {
+    rethrow;
+  } on PostgrestException {
+    rethrow;
+  } catch (_) {
+    // Fall through to table query on unexpected errors.
   }
 
   final dynamic fallback = await client
@@ -95,11 +107,29 @@ final approvalsInboxProvider =
       .order('requested_at', ascending: false)
       .timeout(
         const Duration(seconds: 8),
-        onTimeout: () => throw TimeoutException('Approvals request timed out'),
+        onTimeout: () =>
+            throw TimeoutException('Approvals table request timed out'),
       );
 
   return _parseApprovalsResponse(fallback);
-});
+}
+
+Future<List<ApprovalRequest>?> _fetchViaRpc(SupabaseClient client) async {
+  try {
+    final dynamic response = await client
+        .rpc<dynamic>('rpc_approvals_inbox')
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => throw TimeoutException('Approvals RPC timed out'),
+        );
+    return _parseApprovalsResponse(response);
+  } on PostgrestException catch (error) {
+    if (_isUndefinedFunction(error)) {
+      return null;
+    }
+    rethrow;
+  }
+}
 
 List<ApprovalRequest> _parseApprovalsResponse(dynamic payload) {
   if (payload is List) {
@@ -125,7 +155,14 @@ void _recordInboxTelemetry(Duration elapsed, {required bool success}) {
 
 bool _isUndefinedFunction(PostgrestException error) {
   final String message = error.message.toLowerCase();
-  return message.contains('function') && message.contains('does not exist');
+  final String details = error.details?.toString().toLowerCase() ?? '';
+  if (error.code == 'PGRST202') {
+    return true;
+  }
+  return (message.contains('function') &&
+          (message.contains('does not exist') ||
+              message.contains('could not find the function'))) ||
+      details.contains('could not find the function');
 }
 
 double _asDouble(Object? value) {
