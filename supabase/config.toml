@@ -301,6 +301,12 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
+# The scheduled cashback expiry function is driven by the GitHub Actions cron
+# with a custom CASHBACK_CRON_SECRET bearer token (not a Supabase JWT), so the
+# gateway must not require a JWT — the function enforces the shared secret itself.
+[functions.cashback_expire]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
