@@ -32,9 +32,9 @@ foundation first; the BTC path is gated behind a regulatory decision.
 
 ## Phase 1 — complete the cashback foundation (highest value, no BTC risk)
 
-1. **Wire the real Supabase repo** — the Flutter app currently defaults to the
-   in-memory fake; switch `cashbackRepositoryProvider` to
-   `SupabaseCashbackRepository` in the authenticated flow.
+1. **Wire the real Supabase repo** — ✅ `cashbackRepositoryProvider` and
+   `adminCashbackRepositoryProvider` now default to their Supabase
+   implementations (tests override with fakes).
 2. **Redeem in checkout UI** — surface the `rpc_redeem_cashback` capability
    (already in the repo layer) in the Flutter cart/checkout, applying a `redeem`
    row against the order total.
@@ -43,8 +43,9 @@ foundation first; the BTC path is gated behind a regulatory decision.
 4. **Notifications** — ✅ award now writes an `notifications` row to the buyer on
    earn (patch 026).
 5. **Expiry sweep** — ✅ `rpc_expire_cashback` (patch 025) + `cashback_expire`
-   edge function (patch: supabase/functions). Remaining: point an external cron
-   at the function (no pg_cron in repo).
+   edge function + daily GitHub Actions cron (`.github/workflows/cashback_expire_cron.yml`,
+   guarded by `CASHBACK_CRON_SECRET`). Remaining: set the repo secrets
+   `SUPABASE_FUNCTIONS_URL` + `CASHBACK_CRON_SECRET` and deploy the function.
 
 ## Phase 2 — Web PWA parity
 

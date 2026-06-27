@@ -1,0 +1,38 @@
+name: Cashback expiry
+
+# Drives the cashback_expire edge function on a schedule (there is no pg_cron in
+# this project). Requires two repository secrets:
+#   SUPABASE_FUNCTIONS_URL  e.g. https://<project-ref>.supabase.co
+#   CASHBACK_CRON_SECRET    the same value set on the edge function's env, used
+#                           as the bearer token the function verifies
+# The job is a no-op (skips) if SUPABASE_FUNCTIONS_URL is not configured.
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # daily at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  expire:
+    name: Expire aged cashback
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke cashback_expire
+        env:
+          FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          CRON_SECRET: ${{ secrets.CASHBACK_CRON_SECRET }}
+        run: |
+          if [ -z "$FUNCTIONS_URL" ]; then
+            echo "SUPABASE_FUNCTIONS_URL not set; skipping."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "$FUNCTIONS_URL/functions/v1/cashback_expire" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H 'Content-Type: application/json')
+          echo "HTTP $code"
+          cat /tmp/resp.json || true
+          if [ "$code" != "200" ]; then
+            echo "cashback_expire failed"
+            exit 1
+          fi
