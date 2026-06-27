@@ -106,7 +106,8 @@ RETURNS uuid AS $$
 DECLARE
   v_entry_id uuid;
 BEGIN
-  IF auth_role() <> 'admin' THEN
+  -- NULL-safe: a caller with no valid role (auth_role() = NULL) must be rejected.
+  IF auth_role() IS DISTINCT FROM 'admin' THEN
     RAISE EXCEPTION 'Only admins may adjust cashback' USING errcode = '42501';
   END IF;
   IF p_amount IS NULL OR p_amount = 0 THEN
@@ -124,13 +125,15 @@ $$ LANGUAGE plpgsql
    SECURITY DEFINER
    SET search_path = public, auth;
 
+REVOKE EXECUTE ON FUNCTION rpc_adjust_cashback(uuid, numeric, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION rpc_adjust_cashback(uuid, numeric, text) TO authenticated, service_role;
 
 -- Admin: cashback overview (balance per company) ------------------------------
 CREATE OR REPLACE FUNCTION rpc_cashback_overview()
 RETURNS TABLE(company_id uuid, company_name text, balance numeric) AS $$
 BEGIN
-  IF auth_role() <> 'admin' THEN
+  -- NULL-safe: reject callers without a valid role (auth_role() = NULL).
+  IF auth_role() IS DISTINCT FROM 'admin' THEN
     RAISE EXCEPTION 'Only admins may view the cashback overview' USING errcode = '42501';
   END IF;
 
@@ -147,4 +150,5 @@ $$ LANGUAGE plpgsql
    SECURITY DEFINER
    SET search_path = public, auth;
 
+REVOKE EXECUTE ON FUNCTION rpc_cashback_overview() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION rpc_cashback_overview() TO authenticated, service_role;
