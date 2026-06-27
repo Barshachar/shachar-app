@@ -144,5 +144,55 @@ $$;
 reset role;
 reset session "request.jwt.claims";
 
+-- 4. Customer cannot read another tenant's cashback, nor credit themselves.
+-- Guarded so the suite still runs before patch 023_cashback_ledger.sql.
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "buyer",
+  "company_id": "30000000-0000-0000-0000-000000000000",
+  "sub": "33333333-3333-3333-3333-333333333333"
+}';
+
+DO $$
+DECLARE
+  leak uuid;
+BEGIN
+  IF to_regclass('public.cashback_ledger') IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT c.id INTO leak
+    FROM cashback_ledger c
+   WHERE c.customer_company_id <> auth_company_id()
+   LIMIT 1;
+  IF FOUND THEN
+    RAISE EXCEPTION
+      'RLS violation: customer % can read foreign cashback %',
+      auth_company_id(), leak;
+  END IF;
+
+  BEGIN
+    INSERT INTO cashback_ledger (customer_company_id, entry_type, amount, currency)
+    VALUES (auth_company_id(), 'earn', 9999.00, 'ILS');
+
+    RAISE EXCEPTION
+      'RLS violation: customer % credited its own cashback',
+      auth_company_id();
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL; -- expected: no customer write policy exists
+    WHEN raise_exception THEN
+      RAISE;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN
+        RAISE;
+      END IF;
+  END;
+END
+$$;
+
+reset role;
+reset session "request.jwt.claims";
+
 rollback;
 -- End of regression tests

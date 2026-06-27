@@ -745,5 +745,19 @@
   "adminUserRoleVendorAdmin": "מנהל ספק",
   "adminUserRoleVendorUser": "משתמש ספק",
   "adminUserRoleCustomerAdmin": "מנהל לקוח",
-  "adminUserRoleBuyer": "קניין"
+  "adminUserRoleBuyer": "קניין",
+  "homeTileCashback": "הזיכויים שלי",
+  "homeTileCashbackDescription": "צבירת זיכויים על כל הזמנה",
+  "cashbackTitle": "הזיכויים שלי",
+  "cashbackBalance": "יתרת זיכוי",
+  "cashbackHistoryTitle": "תנועות אחרונות",
+  "cashbackEmpty": "עדיין לא צברת זיכויים.",
+  "cashbackLoadError": "טעינת הזיכויים נכשלה.",
+  "cashbackBtcEquivalent": "שווה ערך לכ-",
+  "cashbackConvertCta": "המרה לביטקוין",
+  "cashbackComingSoon": "המרת הזיכוי לביטקוין תתאפשר בקרוב דרך ספק מוסדר. היתרה שלך נשמרת בשקלים, וההמרה תתבצע לפי שער חי בעת הבקשה.",
+  "cashbackTypeEarn": "צבירה",
+  "cashbackTypeRedeem": "מימוש",
+  "cashbackTypeExpire": "פקיעה",
+  "cashbackTypeAdjust": "התאמה"
 }

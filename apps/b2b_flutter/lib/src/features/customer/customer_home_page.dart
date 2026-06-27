@@ -128,6 +128,14 @@ class CustomerHomePage extends ConsumerWidget {
             'בקשות ממתינות לאישור',
         onTap: () => context.go('/customer/approvals'),
       ),
+      _HomeShortcutConfig(
+        keyValue: 'home_menu_cashback',
+        icon: Icons.savings_outlined,
+        label: l10n?.translate('homeTileCashback') ?? 'הזיכויים שלי',
+        description: l10n?.translate('homeTileCashbackDescription') ??
+            'צבירת זיכויים על כל הזמנה',
+        onTap: () => context.go('/finance/cashback'),
+      ),
     ];
 
     return Scaffold(
