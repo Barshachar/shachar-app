@@ -295,5 +295,47 @@ $$;
 reset role;
 reset session "request.jwt.claims";
 
+-- 6. Cashback expiry sweep: only credits older than expiry_days expire, the
+-- sweep is idempotent, and it leaves recent credits untouched. Runs in the
+-- default (RLS-exempt) role. Guarded so the suite still runs before patch 025.
+DO $$
+DECLARE
+  v_company uuid := '30000000-0000-0000-0000-000000000002'; -- Hotel Plaza (no seed cashback)
+  v_balance numeric;
+  v_runs integer;
+BEGIN
+  IF to_regprocedure('public.rpc_expire_cashback()') IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- 30-day expiry for this company.
+  INSERT INTO cashback_config (company_id, rate_pct, expiry_days)
+  VALUES (v_company, 1.00, 30)
+  ON CONFLICT (company_id) DO UPDATE SET expiry_days = excluded.expiry_days;
+
+  -- One aged credit (should expire) and one recent credit (should remain).
+  INSERT INTO cashback_ledger (customer_company_id, entry_type, amount, currency, created_at)
+  VALUES
+    (v_company, 'earn', 50.00, 'ILS', now() - interval '60 days'),
+    (v_company, 'earn', 10.00, 'ILS', now());
+
+  v_runs := rpc_expire_cashback();
+
+  SELECT COALESCE(SUM(amount), 0) INTO v_balance
+    FROM cashback_ledger WHERE customer_company_id = v_company;
+  IF v_balance <> 10.00 THEN
+    RAISE EXCEPTION 'Expiry sweep wrong balance: expected 10.00, got %', v_balance;
+  END IF;
+
+  -- Idempotent: a second sweep must not expire anything further.
+  PERFORM rpc_expire_cashback();
+  SELECT COALESCE(SUM(amount), 0) INTO v_balance
+    FROM cashback_ledger WHERE customer_company_id = v_company;
+  IF v_balance <> 10.00 THEN
+    RAISE EXCEPTION 'Expiry sweep not idempotent: balance drifted to %', v_balance;
+  END IF;
+END
+$$;
+
 rollback;
 -- End of regression tests
