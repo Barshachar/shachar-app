@@ -77,3 +77,4 @@ flutter:
     - assets/config/app_config.json
     - assets/translations/
     - assets/config/
+    - assets/mascot/

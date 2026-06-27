@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
+import 'package:ashachar_marketplace/src/app/widgets/app_mascot.dart';
 import 'package:ashachar_marketplace/src/core/localization/localization.dart';
 import 'package:ashachar_marketplace/src/features/promotions/data/promotions_repository.dart';
 
@@ -100,6 +101,7 @@ class PromotionsPage extends ConsumerWidget {
                 key: const ValueKey('promotions_empty_state'),
                 icon: Icons.inbox_outlined,
                 message: emptyMessage,
+                showMascot: true,
               );
             }
             // Add onViewProducts callback
@@ -153,10 +155,15 @@ class _PromotionsPlaceholder extends StatelessWidget {
     super.key,
     required this.icon,
     required this.message,
+    this.showMascot = false,
   });
 
   final IconData icon;
   final String message;
+
+  /// When true the brand mascot is shown instead of the plain icon — used for
+  /// friendly empty states (kept off for error states).
+  final bool showMascot;
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +173,10 @@ class _PromotionsPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: AColors.mutedForeground),
+            if (showMascot)
+              const AppMascot(size: 148)
+            else
+              Icon(icon, size: 48, color: AColors.mutedForeground),
             const SizedBox(height: ASpacing.md),
             Text(
               message,

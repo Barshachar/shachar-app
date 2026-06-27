@@ -31,6 +31,8 @@
   "homeCampaignTitle": "Promotions 2025",
   "homeCampaignSubtitle": "Seasonal bundles and tailored offers for your business.",
   "homeCampaignCta": "Browse deals",
+  "homeCampaignBadge": "Premium Club",
+  "homeCampaignHighlight": "Up to 40% off",
   "homeCurrentOrderTitle": "Current order",
   "homeCurrentOrderEmpty": "You don't have an active draft yet.",
   "homeCurrentOrderLoading": "Updating draft...",

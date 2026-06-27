@@ -13,6 +13,7 @@ import 'package:ashachar_marketplace/src/features/orders/domain/cart_line.dart';
 import 'package:ashachar_marketplace/src/features/orders/presentation/cart_controller.dart';
 import 'package:ashachar_marketplace/src/features/orders/data/orders_repository.dart';
 import 'package:ashachar_marketplace/src/features/orders/domain/order_models.dart';
+import 'package:ashachar_marketplace/src/features/promotions/presentation/widgets/premium_promotions_banner.dart';
 
 class CustomerHomePage extends ConsumerWidget {
   const CustomerHomePage({super.key});
@@ -56,6 +57,10 @@ class CustomerHomePage extends ConsumerWidget {
         'חסכון בלעדי ללקוחות חוזרים.';
     final String campaignCta =
         l10n?.translate('homeCampaignCta') ?? 'למוצרים משתתפים';
+    final String campaignBadge =
+        l10n?.translate('homeCampaignBadge') ?? 'מועדון פרימיום';
+    final String campaignHighlight =
+        l10n?.translate('homeCampaignHighlight') ?? 'עד 40% הנחה';
     final String currentOrderTitle =
         l10n?.translate('homeCurrentOrderTitle') ?? 'הזמנה נוכחית';
     final String currentOrderEmpty = l10n?.translate('homeCurrentOrderEmpty') ??
@@ -213,10 +218,12 @@ class CustomerHomePage extends ConsumerWidget {
                     onSearchTap: () => context.go('/catalog/search'),
                   ),
                   ASpacing.gapRow(ASpacing.lg),
-                  _CampaignBanner(
+                  PremiumPromotionsBanner(
                     title: campaignTitle,
                     subtitle: campaignSubtitle,
                     cta: campaignCta,
+                    badgeLabel: campaignBadge,
+                    highlight: campaignHighlight,
                     onTap: () => context.go('/promotions'),
                   ),
                   ASpacing.gapRow(ASpacing.lg),
@@ -344,79 +351,6 @@ class _HeroBanner extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CampaignBanner extends StatelessWidget {
-  const _CampaignBanner({
-    required this.title,
-    required this.subtitle,
-    required this.cta,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final String cta;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      key: const ValueKey('home_campaign_banner'),
-      borderRadius: ARadii.md,
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AColors.primaryLight,
-          borderRadius: ARadii.md,
-        ),
-        padding: const EdgeInsetsDirectional.all(ASpacing.lg),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(ASpacing.sm),
-              child: const Icon(
-                Icons.campaign_outlined,
-                color: AColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: ASpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: ATypography.titleSm
-                        .copyWith(color: AColors.primaryDark),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: ASpacing.xs),
-                  Text(
-                    subtitle,
-                    style:
-                        ATypography.bodySm.copyWith(color: AColors.foreground),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: ASpacing.md),
-            Icon(
-              context.isRtl ? Icons.chevron_left : Icons.chevron_right,
-              color: AColors.primaryDark,
-            ),
-          ],
-        ),
       ),
     );
   }
