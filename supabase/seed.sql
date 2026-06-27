@@ -311,3 +311,17 @@ values
 insert into audit_log (id, actor_user_id, action, table_name, row_id, metadata)
 values
   ('E0000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333', 'order_submitted', 'orders', 'A0000000-0000-0000-0000-000000000000', '{"total":3456.00}');
+
+-- Demo cashback for SuperMart Chain. Guarded so the base seed still runs even
+-- when patch 023_cashback_ledger.sql has not been applied yet.
+DO $$
+BEGIN
+  IF to_regclass('public.cashback_ledger') IS NOT NULL THEN
+    INSERT INTO cashback_ledger (id, customer_company_id, order_id, entry_type, amount, currency, note)
+    VALUES
+      ('F0000000-0000-0000-0000-000000000000', '30000000-0000-0000-0000-000000000000', 'A0000000-0000-0000-0000-000000000000', 'earn', 36.50, 'ILS', 'Cashback for order ORD-A0000000'),
+      ('F0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000000', NULL, 'earn', 18.20, 'ILS', 'Welcome cashback')
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END
+$$;

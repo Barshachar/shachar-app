@@ -745,5 +745,19 @@
   "adminUserRoleVendorAdmin": "Vendor admin",
   "adminUserRoleVendorUser": "Vendor user",
   "adminUserRoleCustomerAdmin": "Customer admin",
-  "adminUserRoleBuyer": "Buyer"
+  "adminUserRoleBuyer": "Buyer",
+  "homeTileCashback": "My cashback",
+  "homeTileCashbackDescription": "Earn credit on every order",
+  "cashbackTitle": "My cashback",
+  "cashbackBalance": "Cashback balance",
+  "cashbackHistoryTitle": "Recent activity",
+  "cashbackEmpty": "You haven't earned cashback yet.",
+  "cashbackLoadError": "Failed to load cashback.",
+  "cashbackBtcEquivalent": "Approximately",
+  "cashbackConvertCta": "Convert to Bitcoin",
+  "cashbackComingSoon": "Converting cashback to Bitcoin will be available soon via a regulated provider. Your balance is kept in ILS and converted at the live rate at request time.",
+  "cashbackTypeEarn": "Earned",
+  "cashbackTypeRedeem": "Redeemed",
+  "cashbackTypeExpire": "Expired",
+  "cashbackTypeAdjust": "Adjustment"
 }

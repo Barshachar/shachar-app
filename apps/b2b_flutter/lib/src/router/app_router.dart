@@ -25,6 +25,7 @@ import 'package:ashachar_marketplace/src/features/admin/presentation/vendor_queu
 import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_page.dart';
 import 'package:ashachar_marketplace/src/features/billing/presentation/business_credit_page.dart';
 import 'package:ashachar_marketplace/src/features/billing/presentation/payment_terms_page.dart';
+import 'package:ashachar_marketplace/src/features/cashback/presentation/cashback_page.dart';
 import 'package:ashachar_marketplace/src/features/finance/presentation/cost_centers_page.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_page.dart';
 import 'package:ashachar_marketplace/src/features/catalog/presentation/catalog_search_page.dart';
@@ -133,6 +134,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/finance/payment-terms',
             name: 'payment-terms',
             builder: (context, state) => const PaymentTermsPage(),
+          ),
+          GoRoute(
+            path: '/finance/cashback',
+            name: 'cashback',
+            builder: (context, state) => const CashbackPage(),
           ),
           GoRoute(
             path: '/finance/cost-centers',
