@@ -118,6 +118,24 @@ class _BalanceCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(ils.format(balanceIls),
                 style: ATypography.headline2.copyWith(fontSize: 28)),
+            if (balanceIls > 0) ...<Widget>[
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AColors.primary,
+                    side: const BorderSide(color: AColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  onPressed: () => _showRedeemSheet(context),
+                  child: Text(tr('cashbackRedeemCta', 'מימוש זיכוי')),
+                ),
+              ),
+            ],
             if (btcEnabled) ...<Widget>[
               const SizedBox(height: 16),
               _BtcEquivalent(balanceIls: balanceIls, tr: tr, ref: ref),
@@ -142,6 +160,22 @@ class _BalanceCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showRedeemSheet(BuildContext context) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final bool? redeemed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext context) =>
+          _RedeemSheet(balanceIls: balanceIls, tr: tr),
+    );
+    if (redeemed == true) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(tr('cashbackRedeemSuccess', 'הזיכוי מומש בהצלחה'))),
+      );
+    }
   }
 
   void _showConvertSheet(
@@ -169,6 +203,121 @@ class _BalanceCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet form for redeeming cashback. Calls the redeem RPC via the
+/// repository, then refreshes the summary on success.
+class _RedeemSheet extends ConsumerStatefulWidget {
+  const _RedeemSheet({required this.balanceIls, required this.tr});
+
+  final double balanceIls;
+  final String Function(String, String) tr;
+
+  @override
+  ConsumerState<_RedeemSheet> createState() => _RedeemSheetState();
+}
+
+class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
+  final TextEditingController _controller = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final String Function(String, String) tr = widget.tr;
+    final double? amount = double.tryParse(_controller.text.trim());
+    if (amount == null || amount <= 0) {
+      setState(() => _error = tr('cashbackRedeemInvalid', 'יש להזין סכום תקין'));
+      return;
+    }
+    if (amount > widget.balanceIls) {
+      setState(() => _error = tr('cashbackRedeemTooMuch', 'הסכום גבוה מהיתרה'));
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(cashbackRepositoryProvider)
+          .redeem(amountIls: amount);
+      ref.invalidate(cashbackSummaryProvider);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = tr('cashbackRedeemFailed', 'המימוש נכשל, נסו שוב');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String Function(String, String) tr = widget.tr;
+    final intl.NumberFormat ils = intl.NumberFormat.simpleCurrency(name: 'ILS');
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 8, 24, 24 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(tr('cashbackRedeemCta', 'מימוש זיכוי'),
+              style: ATypography.titleMd),
+          const SizedBox(height: 8),
+          Text(
+            '${tr('cashbackBalance', 'יתרת זיכוי')}: ${ils.format(widget.balanceIls)}',
+            style: ATypography.bodySm.copyWith(color: AColors.mutedForeground),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            enabled: !_loading,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: tr('cashbackRedeemAmount', 'סכום למימוש (₪)'),
+              border: const OutlineInputBorder(),
+              errorText: _error,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(tr('cashbackRedeemConfirm', 'אישור מימוש')),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -759,5 +759,12 @@
   "cashbackTypeEarn": "צבירה",
   "cashbackTypeRedeem": "מימוש",
   "cashbackTypeExpire": "פקיעה",
-  "cashbackTypeAdjust": "התאמה"
+  "cashbackTypeAdjust": "התאמה",
+  "cashbackRedeemCta": "מימוש זיכוי",
+  "cashbackRedeemAmount": "סכום למימוש (₪)",
+  "cashbackRedeemInvalid": "יש להזין סכום תקין",
+  "cashbackRedeemTooMuch": "הסכום גבוה מהיתרה",
+  "cashbackRedeemConfirm": "אישור מימוש",
+  "cashbackRedeemSuccess": "הזיכוי מומש בהצלחה",
+  "cashbackRedeemFailed": "המימוש נכשל, נסו שוב"
 }
