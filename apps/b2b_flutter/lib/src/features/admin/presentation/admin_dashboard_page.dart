@@ -127,6 +127,13 @@ class AdminDashboardPage extends ConsumerWidget {
         icon: Icons.assignment_turned_in_outlined,
         destination: '/admin/vendor-queue',
       ),
+      _QuickAction(
+        label: l10n?.translate('adminDashboardCashbackCta') ?? 'Cashback',
+        description: l10n?.translate('adminDashboardCashbackDescription') ??
+            'Balances, liability and adjustments',
+        icon: Icons.savings_outlined,
+        destination: '/admin/cashback',
+      ),
     ];
 
     final List<_InsightItem> highPriorityTickets = <_InsightItem>[

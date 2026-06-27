@@ -337,5 +337,75 @@ BEGIN
 END
 $$;
 
+-- 7a. Admin-only cashback RPCs reject non-admin callers (buyer).
+-- Guarded so the suite still runs before patch 026.
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "buyer",
+  "company_id": "30000000-0000-0000-0000-000000000000",
+  "sub": "33333333-3333-3333-3333-333333333333"
+}';
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.rpc_adjust_cashback(uuid, numeric, text)') IS NULL THEN
+    RETURN;
+  END IF;
+
+  BEGIN
+    PERFORM rpc_adjust_cashback('30000000-0000-0000-0000-000000000000', 5.00, 'probe');
+    RAISE EXCEPTION 'Security violation: buyer adjusted cashback';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM LIKE 'Security violation%' THEN RAISE; END IF;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN RAISE; END IF;
+  END;
+
+  BEGIN
+    PERFORM * FROM rpc_cashback_overview();
+    RAISE EXCEPTION 'Security violation: buyer viewed cashback overview';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM LIKE 'Security violation%' THEN RAISE; END IF;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '42501' THEN RAISE; END IF;
+  END;
+END
+$$;
+
+reset role;
+reset session "request.jwt.claims";
+
+-- 7b. Awarding cashback emits an earn notification to the buyer.
+-- Default (RLS-exempt) role; guarded so it runs only when patch 026 is applied.
+DO $$
+DECLARE
+  v_order uuid := '00000000-0000-0000-0000-0000000000f7';
+  v_user uuid := '33333333-3333-3333-3333-333333333333';
+BEGIN
+  IF to_regprocedure('public.rpc_award_order_cashback(uuid)') IS NULL
+     OR to_regprocedure('public.rpc_adjust_cashback(uuid, numeric, text)') IS NULL THEN
+    RETURN; -- patch 026 (notification) not applied
+  END IF;
+
+  INSERT INTO orders (id, customer_company_id, created_by, status, currency, total)
+  VALUES (v_order, '30000000-0000-0000-0000-000000000002', v_user,
+          'delivered', 'ILS', 100.00)
+  ON CONFLICT (id) DO NOTHING;
+
+  PERFORM rpc_award_order_cashback(v_order);
+
+  IF NOT EXISTS (
+    SELECT 1 FROM notifications
+     WHERE user_id = v_user
+       AND data->>'type' = 'cashback_earned'
+       AND data->>'order_id' = v_order::text
+  ) THEN
+    RAISE EXCEPTION 'Award did not emit a cashback notification';
+  END IF;
+END
+$$;
+
 rollback;
 -- End of regression tests

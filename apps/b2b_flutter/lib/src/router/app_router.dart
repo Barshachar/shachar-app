@@ -20,6 +20,7 @@ import 'package:ashachar_marketplace/src/features/admin/presentation/admin_price
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_reports_page.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_settings_page.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_users_page.dart';
+import 'package:ashachar_marketplace/src/features/admin/cashback/presentation/admin_cashback_page.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/admin_export_scheduler_page.dart';
 import 'package:ashachar_marketplace/src/features/admin/presentation/vendor_queue_page.dart';
 import 'package:ashachar_marketplace/src/features/approvals/presentation/approvals_inbox_page.dart';
@@ -320,6 +321,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: 'audit-log',
                 name: 'admin-audit-log',
                 builder: (context, state) => const AdminAuditLogPage(),
+              ),
+              GoRoute(
+                path: 'cashback',
+                name: 'admin-cashback',
+                builder: (context, state) => const AdminCashbackPage(),
               ),
               GoRoute(
                 path: 'settings',

@@ -766,5 +766,19 @@
   "cashbackRedeemTooMuch": "הסכום גבוה מהיתרה",
   "cashbackRedeemConfirm": "אישור מימוש",
   "cashbackRedeemSuccess": "הזיכוי מומש בהצלחה",
-  "cashbackRedeemFailed": "המימוש נכשל, נסו שוב"
+  "cashbackRedeemFailed": "המימוש נכשל, נסו שוב",
+  "adminDashboardCashbackCta": "זיכויים",
+  "adminDashboardCashbackDescription": "יתרות, התחייבות והתאמות",
+  "adminCashbackTitle": "זיכויים (אדמין)",
+  "adminCashbackError": "טעינת הזיכויים נכשלה.",
+  "adminCashbackLiability": "סך התחייבות זיכויים",
+  "adminCashbackByCompany": "יתרות לפי חברה",
+  "adminCashbackEmpty": "אין יתרות זיכוי.",
+  "adminCashbackAdjustCta": "התאמה",
+  "adminCashbackAdjusted": "ההתאמה נשמרה",
+  "adminCashbackAdjustAmount": "סכום (₪, שלילי = חיוב)",
+  "adminCashbackAdjustNote": "הערה (לא חובה)",
+  "adminCashbackAdjustConfirm": "שמירה",
+  "adminCashbackAdjustInvalid": "יש להזין סכום שונה מאפס",
+  "adminCashbackAdjustFailed": "ההתאמה נכשלה, נסו שוב"
 }
