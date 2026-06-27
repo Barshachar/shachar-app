@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:ashachar_marketplace/src/app/theme/theme.dart';
+import 'package:ashachar_marketplace/src/app/widgets/app_mascot.dart';
 
 /// A premium, eye-catching promotions banner intended for the customer home
 /// surface. It layers a brand gradient, a soft animated sheen, gold accents and
@@ -240,7 +241,7 @@ class _BannerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: <Widget>[
         Expanded(
           child: Column(
@@ -276,8 +277,8 @@ class _BannerContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: ASpacing.md),
-        const _MedallionIcon(),
+        const SizedBox(width: ASpacing.sm),
+        const AppMascot(size: 132),
       ],
     );
   }
@@ -409,46 +410,6 @@ class _CtaPill extends StatelessWidget {
             color: AColors.primaryDark,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Gold-ringed glass medallion housing the offer icon.
-class _MedallionIcon extends StatelessWidget {
-  const _MedallionIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.28),
-            Colors.white.withValues(alpha: 0.08),
-          ],
-        ),
-        border: Border.all(
-          color: AColors.premiumGoldLight.withValues(alpha: 0.7),
-          width: 1.5,
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: AColors.premiumGold.withValues(alpha: 0.35),
-            blurRadius: 18,
-            spreadRadius: -2,
-          ),
-        ],
-      ),
-      child: const Icon(
-        Icons.local_offer_rounded,
-        color: Colors.white,
-        size: 26,
       ),
     );
   }
