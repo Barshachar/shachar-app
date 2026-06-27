@@ -665,9 +665,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   title: paymentTermSelection.label,
                   body: paymentTermSelection.description,
                   footer: l10n != null
-                      ? l10n
-                          .translate('checkoutPaymentNetDays')
-                          .replaceAll(
+                      ? l10n.translate('checkoutPaymentNetDays').replaceAll(
                             '{days}',
                             paymentTermSelection.netDays.toString(),
                           )

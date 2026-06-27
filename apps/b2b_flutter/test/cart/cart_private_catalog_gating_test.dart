@@ -60,7 +60,7 @@ void main() {
         ordersRepositoryProvider.overrideWithValue(FakeOrdersRepository()),
         quickOrderCompanyIdProvider.overrideWithValue('COMP-1'),
         priceResolutionServiceProvider.overrideWithValue(
-          FakePriceResolutionService(catalog: <String>{'VAR-2'}),
+          FakePriceResolutionService(catalog: const <String>{'VAR-2'}),
         ),
         sessionControllerProvider.overrideWith(
           (ref) => FakeSessionController(_fakeSession()),

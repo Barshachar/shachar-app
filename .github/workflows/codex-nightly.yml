@@ -1,0 +1,40 @@
+name: Codex Nightly
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 01:00 UTC (~04:00 Asia/Jerusalem)
+  workflow_dispatch:
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        working-directory: apps/web_pwa
+        run: npm ci
+      - name: Vitest
+        working-directory: apps/web_pwa
+        run: npx vitest run | tee ../../codex/vitest_full_test.log
+      - name: Refresh TEST_SUMMARY.md
+        shell: bash
+        run: |
+          PASS_LINE=$(tail -n 5 codex/vitest_full_test.log | sed -n "s/^ Test Files  \(.*\)$/\1/p")
+          DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          {
+            echo "# Test Summary — ${DATE}"
+            echo
+            echo "## Web PWA (Vitest)"
+            echo "- ${PASS_LINE:-See codex/vitest_full_test.log for details}"
+          } > codex/TEST_SUMMARY.md
+      - name: Commit summary if changed
+        shell: bash
+        run: |
+          git config user.name "codex-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add codex/TEST_SUMMARY.md codex/vitest_full_test.log || true
+          git diff --cached --quiet || git commit -m "docs(nightly): refresh TEST_SUMMARY from vitest"
+          git push || true

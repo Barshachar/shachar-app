@@ -1,0 +1,33 @@
+name: Web Lint
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ codex/** ]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        working-directory: apps/web_pwa
+        run: npm ci || npm install
+      - name: ESLint
+        working-directory: apps/web_pwa
+        run: npx eslint . --ext .ts,.tsx
+      - name: Typecheck (skip if TS not installed)
+        working-directory: apps/web_pwa
+        shell: bash
+        run: |
+          if node -e "require.resolve(typescript)" >/dev/null 2>&1; then
+            if [ -f tsconfig.json ]; then
+              npx tsc -p tsconfig.json --noEmit
+            else
+              echo "No tsconfig.json; skipping typecheck"
+            fi
+          else
+            echo "TypeScript not in devDependencies; skipping typecheck"
+          fi

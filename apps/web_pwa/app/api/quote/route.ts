@@ -1,26 +1,34 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import type { PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchCartItems } from '@/lib/data';
-import { formatILS } from '@/lib/formatter';
 import { assertLocalMode } from '@/lib/admin/local-mode';
+import { computeTotals } from '@/lib/quote';
+import { wrapRtl } from '@/lib/pdf/rtl';
+import {
+  PRIMARY_TEXT_COLOR,
+  assertIntegerCents,
+  buildSummaryTextEntries,
+  buildTableRowEntries,
+  computeColumnRectsForWidth,
+  getRightAlignedX,
+  measureTextWidth,
+  resolveColumnTextX,
+  resolveTableRightEdge
+} from './pdf-helpers';
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'ashachar_sid';
 const TITLE_TEXT = 'א.שחר • אינסטלציה סיטונאית';
+const VAT_RATE = 0.17;
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULT_FONT_PATH = path.resolve(
-  process.cwd(),
-  'app',
-  'api',
-  'quote',
-  'fonts',
-  'Inter-Regular.ttf'
-);
+const DEFAULT_FONT_PATH = path.resolve(MODULE_DIR, 'fonts', 'Inter-Regular.ttf');
 
 let cachedFontBytes: Uint8Array | null | undefined;
 
@@ -34,6 +42,12 @@ async function tryLoadFontBytes(): Promise<Uint8Array | null> {
     candidatePaths.push(path.resolve(process.env.PDF_FONT_PATH));
   }
   candidatePaths.push(DEFAULT_FONT_PATH);
+  candidatePaths.push(
+    path.resolve(process.cwd(), 'app', 'api', 'quote', 'fonts', 'Inter-Regular.ttf')
+  );
+  candidatePaths.push(
+    path.resolve(MODULE_DIR, '../../..', 'public', 'fonts', 'NotoSansHebrew.ttf')
+  );
   candidatePaths.push(
     path.resolve(process.cwd(), 'public', 'fonts', 'NotoSansHebrew.ttf')
   );
@@ -126,10 +140,11 @@ export async function POST(request: Request) {
 
   const headingSize = 20;
   const dateSize = 12;
-  const textColor = rgb(0.1, 0.1, 0.1);
+  const textColor = PRIMARY_TEXT_COLOR;
 
-  const titleWidth = regularFont.widthOfTextAtSize(TITLE_TEXT, headingSize);
-  activePage.drawText(TITLE_TEXT, {
+  const rtlTitleText = wrapRtl(TITLE_TEXT);
+  const titleWidth = measureTextWidth(rtlTitleText, regularFont, headingSize);
+  activePage.drawText(rtlTitleText, {
     x: width - margin - titleWidth,
     y: cursorY,
     size: headingSize,
@@ -141,11 +156,13 @@ export async function POST(request: Request) {
   const dateLabel = `נוצר בתאריך: ${formatDate()}`;
   const quoteId = randomUUID().slice(0, 8);
   const referenceText = `מספר הצעה: ${quoteId}`;
+  const rtlDateLabel = wrapRtl(dateLabel);
+  const rtlReferenceText = wrapRtl(referenceText);
   const maxMetaWidth = Math.max(
-    regularFont.widthOfTextAtSize(dateLabel, dateSize),
-    regularFont.widthOfTextAtSize(referenceText, dateSize)
+    measureTextWidth(rtlDateLabel, regularFont, dateSize),
+    measureTextWidth(rtlReferenceText, regularFont, dateSize)
   );
-  activePage.drawText(referenceText, {
+  activePage.drawText(rtlReferenceText, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -153,7 +170,7 @@ export async function POST(request: Request) {
     color: textColor
   });
   cursorY -= dateSize + 6;
-  activePage.drawText(dateLabel, {
+  activePage.drawText(rtlDateLabel, {
     x: width - margin - maxMetaWidth,
     y: cursorY,
     size: dateSize,
@@ -163,27 +180,38 @@ export async function POST(request: Request) {
 
   cursorY -= dateSize + 18;
 
-  const columns = [
-    { key: 'index', label: '#', width: 30 },
-    { key: 'name', label: 'מוצר', width: 240 },
-    { key: 'sku', label: 'מק"ט', width: 80 },
-    { key: 'qty', label: 'כמות', width: 60 },
-    { key: 'unit', label: 'מחיר יחידה', width: 110 },
-    { key: 'total', label: 'סה"כ', width: 110 }
-  ] as const;
+  const normalizedItems = items.map((item) => {
+    const qty = Number(item.qty);
+    const unitPriceCents = Number(item.variant.price_cents);
+    return {
+      original: item,
+      qty,
+      unitPriceCents
+    };
+  });
+
+  const totals = computeTotals(
+    normalizedItems.map(({ qty, unitPriceCents }) => ({
+      qty,
+      unitPriceCents
+    })),
+    VAT_RATE
+  );
 
   const headerSize = 12;
+  let columnRects = computeColumnRectsForWidth(width, margin);
   const drawHeader = () => {
-    let headerX = margin;
-    for (const column of columns) {
-      activePage.drawText(column.label, {
-        x: headerX,
+    columnRects = computeColumnRectsForWidth(width, margin);
+    for (const column of columnRects) {
+      const headerText = column.wrapHeader ? wrapRtl(column.label) : column.label;
+      const textX = resolveColumnTextX(column, headerText, regularFont, headerSize);
+      activePage.drawText(headerText, {
+        x: textX,
         y: cursorY,
         size: headerSize,
         font: regularFont,
         color: textColor
       });
-      headerX += column.width;
     }
   };
 
@@ -192,62 +220,94 @@ export async function POST(request: Request) {
   cursorY -= headerSize + 8;
 
   const lineHeight = 18;
-  let grandTotal = 0;
+  const rowFontSize = 12;
 
-  const ensureSpace = () => {
+  const ensureRowSpace = () => {
     if (cursorY < margin + lineHeight) {
       activePage = pdfDoc.addPage();
       ({ width, height } = activePage.getSize());
+      columnRects = computeColumnRectsForWidth(width, margin);
       cursorY = height - margin;
       drawHeader();
       cursorY -= headerSize + 8;
     }
   };
 
-  items.forEach((item, index) => {
-    const unitPrice = item.variant.price_cents;
-    const lineTotal = unitPrice * item.qty;
-    grandTotal += lineTotal;
+  normalizedItems.forEach(({ original: item, qty, unitPriceCents }, index) => {
+    const entries = buildTableRowEntries({
+      index,
+      qty,
+      unitPriceCents,
+      productName: item.product.name,
+      sku: item.variant.sku
+    });
 
-    const entries: Record<typeof columns[number]['key'], string> = {
-      index: String(index + 1),
-      name: item.product.name,
-      sku: item.variant.sku || '—',
-      qty: String(item.qty),
-      unit: formatILS(unitPrice),
-      total: formatILS(lineTotal)
-    };
+    ensureRowSpace();
 
-    ensureSpace();
-
-    let currentX = margin;
-    for (const column of columns) {
-      const text = entries[column.key];
-      const fontToUse = column.key === 'sku' ? monoFont : regularFont;
-      activePage.drawText(text, {
-        x: currentX,
+    for (const column of columnRects) {
+      const baseText = entries[column.key];
+      const displayText = column.wrapValue ? wrapRtl(baseText) : baseText;
+      const fontToUse = column.useMono ? monoFont : regularFont;
+      const textX = resolveColumnTextX(column, displayText, fontToUse, rowFontSize);
+      activePage.drawText(displayText, {
+        x: textX,
         y: cursorY,
-        size: 12,
+        size: rowFontSize,
         font: fontToUse,
         color: textColor
       });
-      currentX += column.width;
     }
 
     cursorY -= lineHeight;
   });
 
+  assertIntegerCents(totals.subtotal, 'subtotal');
+  assertIntegerCents(totals.vat, 'VAT amount');
+  assertIntegerCents(totals.total, 'total');
+
+  const summaryEntries = buildSummaryTextEntries(totals, VAT_RATE);
+
+  const ensureSummarySpace = (requiredHeight: number) => {
+    if (cursorY < margin + requiredHeight) {
+      activePage = pdfDoc.addPage();
+      ({ width, height } = activePage.getSize());
+      columnRects = computeColumnRectsForWidth(width, margin);
+      cursorY = height - margin;
+    }
+  };
+
+  const summaryGap = 16;
   cursorY -= 10;
-  ensureSpace();
-  const totalLabel = `סה"כ לתשלום: ${formatILS(grandTotal)}`;
-  const totalWidth = regularFont.widthOfTextAtSize(totalLabel, 14);
-  activePage.drawText(totalLabel, {
-    x: width - margin - totalWidth,
-    y: cursorY,
-    size: 14,
-    font: regularFont,
-    color: rgb(0.02, 0.4, 0.2)
-  });
+  for (const entry of summaryEntries) {
+    const lineSpacing = entry.fontSize === 14 ? 20 : 16;
+    ensureSummarySpace(lineSpacing);
+    const tableRightEdge = resolveTableRightEdge(columnRects, width, margin);
+    const labelX = getRightAlignedX(entry.labelText, regularFont, entry.fontSize, tableRightEdge);
+    activePage.drawText(entry.labelText, {
+      x: labelX,
+      y: cursorY,
+      size: entry.fontSize,
+      font: regularFont,
+      color: textColor
+    });
+
+    const valueRightEdge = Math.max(labelX - summaryGap, margin);
+    const valueX = getRightAlignedX(
+      entry.valueText,
+      regularFont,
+      entry.fontSize,
+      valueRightEdge
+    );
+    activePage.drawText(entry.valueText, {
+      x: valueX,
+      y: cursorY,
+      size: entry.fontSize,
+      font: regularFont,
+      color: entry.valueColor
+    });
+
+    cursorY -= lineSpacing;
+  }
 
   const pdfBytes = await pdfDoc.save();
   const pdfBuffer = Buffer.from(pdfBytes);

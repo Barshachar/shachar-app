@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: apps/web_pwa/package-lock.json
       - name: Install dependencies
         working-directory: apps/web_pwa
-        run: npm ci || npm install
+        run: npm ci
       - name: Lint
         working-directory: apps/web_pwa
         run: npm run lint

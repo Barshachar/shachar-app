@@ -17,6 +17,7 @@ let serverLogs = '';
 let serverUnavailable = false;
 
 beforeAll(async () => {
+  if (!runLegal) return;
   try {
     devServer = spawn(
       'npm',
@@ -73,6 +74,7 @@ beforeAll(async () => {
 }, 120000);
 
 afterAll(async () => {
+  if (!runLegal) return;
   if (devServer) {
     devServer.kill('SIGTERM');
     await Promise.race([

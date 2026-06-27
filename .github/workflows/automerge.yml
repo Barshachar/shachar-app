@@ -1,0 +1,32 @@
+name: Auto Merge
+on:
+  pull_request_target:
+    types: [labeled, synchronize, reopened, ready_for_review]
+jobs:
+  merge:
+    if: ${{ github.event.action != "labeled" || (github.event.action == "labeled" && github.event.label.name == "automerge") }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // Only when label exists
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({owner, repo, issue_number: pr.number});
+            if (!labels.some(l => l.name === "automerge")) {
+              core.info("No automerge label; skipping");
+              return;
+            }
+            // Require green checks
+            const { data: comb } = await github.rest.repos.getCombinedStatusForRef({owner, repo, ref: pr.head.sha});
+            if (comb.state !== "success") {
+              core.info(`Checks are not green yet (${comb.state}); skipping`);
+              return;
+            }
+            await github.rest.pulls.merge({owner, repo, pull_number: pr.number, merge_method: "squash"});
+            core.info("Merged via automerge");
