@@ -11,6 +11,12 @@ class AColors {
 
   static const Color accent = Color(0xFF2563EB);
 
+  // Premium accents — used by promotional / "club" surfaces.
+  static const Color premiumGold = Color(0xFFE7B24B);
+  static const Color premiumGoldLight = Color(0xFFF6D88A);
+  static const Color premiumGoldDeep = Color(0xFFB8842B);
+  static const Color premiumInk = Color(0xFF2A0F0C);
+
   static const Color foreground = Color(0xFF111827);
   static const Color mutedForeground = Color(0xFF6B7280);
 
