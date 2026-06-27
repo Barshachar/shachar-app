@@ -759,5 +759,12 @@
   "cashbackTypeEarn": "Earned",
   "cashbackTypeRedeem": "Redeemed",
   "cashbackTypeExpire": "Expired",
-  "cashbackTypeAdjust": "Adjustment"
+  "cashbackTypeAdjust": "Adjustment",
+  "cashbackRedeemCta": "Redeem cashback",
+  "cashbackRedeemAmount": "Amount to redeem (₪)",
+  "cashbackRedeemInvalid": "Enter a valid amount",
+  "cashbackRedeemTooMuch": "Amount exceeds your balance",
+  "cashbackRedeemConfirm": "Confirm redemption",
+  "cashbackRedeemSuccess": "Cashback redeemed",
+  "cashbackRedeemFailed": "Redemption failed, try again"
 }
