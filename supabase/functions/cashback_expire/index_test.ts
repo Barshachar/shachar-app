@@ -9,3 +9,20 @@ Deno.test('rejects non-POST methods', async () => {
   const json = await res.json();
   assertEquals(json.error, 'Use POST');
 });
+
+Deno.test('rejects POST without the cron secret when one is configured', async () => {
+  Deno.env.set('CASHBACK_CRON_SECRET', 'top-secret');
+  try {
+    const res = await handleRequest(
+      new Request('http://localhost/cashback_expire', {
+        method: 'POST',
+        headers: { authorization: 'Bearer wrong' },
+      }),
+    );
+    assertEquals(res.status, 401);
+    const json = await res.json();
+    assertEquals(json.error, 'Unauthorized');
+  } finally {
+    Deno.env.delete('CASHBACK_CRON_SECRET');
+  }
+});

@@ -12,6 +12,17 @@ export async function handleRequest(req: Request): Promise<Response> {
     return errorResponse('Use POST', 405);
   }
 
+  // Optional shared-secret guard: when CASHBACK_CRON_SECRET is configured, the
+  // caller (the scheduled GitHub Action) must present it as a bearer token so
+  // the endpoint can't be triggered anonymously.
+  const cronSecret = Deno.env.get('CASHBACK_CRON_SECRET');
+  if (cronSecret) {
+    const auth = req.headers.get('authorization') ?? '';
+    if (auth !== `Bearer ${cronSecret}`) {
+      return errorResponse('Unauthorized', 401);
+    }
+  }
+
   const supabase = getServiceClient();
   const { data, error } = await supabase.rpc('rpc_expire_cashback');
 
