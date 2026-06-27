@@ -21,6 +21,8 @@ foundation first; the BTC path is gated behind a regulatory decision.
   `cashback_btc` feature flag (off by default).
 - **Edge function** — `cashback_convert_btc` stub returning 501 until
   `CASHBACK_BTC_ENABLED`, with validation + Deno tests.
+- **Expiry** — `rpc_expire_cashback` (patch 025): FIFO lot accounting, idempotent,
+  `service_role`-only, with a regression test. Still needs a scheduler to invoke it.
 
 ## Phase 0 — close out CI (operational)
 
@@ -40,9 +42,8 @@ foundation first; the BTC path is gated behind a regulatory decision.
    outstanding cashback liability.
 4. **Notifications** — "you earned ₪X cashback" after delivery, via the existing
    `notifications` table.
-5. **Expiry sweep** — implement `expiry_days` enforcement (FIFO lot accounting)
-   as a scheduled job writing `expire` entries. Column already exists in
-   `cashback_config`; enforcement is the remaining work.
+5. **Expiry sweep** — ✅ logic implemented in `rpc_expire_cashback` (patch 025).
+   Remaining: schedule it (pg_cron or an Edge Function cron) to run daily.
 
 ## Phase 2 — Web PWA parity
 
