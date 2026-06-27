@@ -238,5 +238,62 @@ $$;
 reset role;
 reset session "request.jwt.claims";
 
+-- 5. Customer can redeem their own cashback but never more than the balance.
+-- Guarded so the suite still runs before patches 023/024 are applied.
+set local role authenticated;
+set session "request.jwt.claims" = '{
+  "role": "buyer",
+  "company_id": "30000000-0000-0000-0000-000000000000",
+  "sub": "33333333-3333-3333-3333-333333333333"
+}';
+
+DO $$
+DECLARE
+  v_before numeric;
+  v_after numeric;
+  v_id uuid;
+BEGIN
+  IF to_regprocedure('public.rpc_redeem_cashback(numeric, uuid)') IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT COALESCE(SUM(amount), 0) INTO v_before
+    FROM cashback_ledger WHERE customer_company_id = auth_company_id();
+  IF v_before <= 0 THEN
+    RETURN; -- no seeded balance to exercise redemption with
+  END IF;
+
+  -- (a) A valid redemption reduces the balance.
+  v_id := rpc_redeem_cashback(round(v_before / 2, 2), NULL);
+  IF v_id IS NULL THEN
+    RAISE EXCEPTION 'Redeem returned null for a valid request';
+  END IF;
+
+  SELECT COALESCE(SUM(amount), 0) INTO v_after
+    FROM cashback_ledger WHERE customer_company_id = auth_company_id();
+  IF v_after >= v_before THEN
+    RAISE EXCEPTION 'Redeem did not reduce balance (% -> %)', v_before, v_after;
+  END IF;
+
+  -- (b) Over-redeeming beyond the balance must fail.
+  BEGIN
+    PERFORM rpc_redeem_cashback(v_after + 1000000, NULL);
+    RAISE EXCEPTION 'Security violation: customer over-redeemed cashback';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM LIKE 'Security violation%' THEN
+        RAISE; -- our own assertion fired: the call wrongly succeeded
+      END IF;
+    WHEN OTHERS THEN
+      IF SQLSTATE <> '22023' THEN
+        RAISE; -- expected insufficient-balance error is 22023
+      END IF;
+  END;
+END
+$$;
+
+reset role;
+reset session "request.jwt.claims";
+
 rollback;
 -- End of regression tests

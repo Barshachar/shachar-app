@@ -40,6 +40,17 @@ class SupabaseCashbackRepository implements CashbackRepository {
     return CashbackSummary(balanceIls: balance, entries: entries);
   }
 
+  @override
+  Future<void> redeem({required double amountIls, String? orderId}) async {
+    await _client.rpc(
+      'rpc_redeem_cashback',
+      params: <String, dynamic>{
+        'p_amount': amountIls,
+        'p_order_id': orderId,
+      },
+    );
+  }
+
   CashbackEntry _entryFromRow(Map<String, dynamic> row) {
     return CashbackEntry(
       id: row['id'] as String,

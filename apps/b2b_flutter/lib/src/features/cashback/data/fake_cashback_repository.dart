@@ -30,4 +30,10 @@ class FakeCashbackRepository implements CashbackRepository {
         entries.fold<double>(0, (double sum, CashbackEntry e) => sum + e.amountIls);
     return CashbackSummary(balanceIls: balance, entries: entries);
   }
+
+  @override
+  Future<void> redeem({required double amountIls, String? orderId}) async {
+    // Dev/test fake: redemption is a no-op (the real ledger lives in Supabase).
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+  }
 }

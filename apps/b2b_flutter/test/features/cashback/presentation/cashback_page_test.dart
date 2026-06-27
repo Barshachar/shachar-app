@@ -15,6 +15,9 @@ class _FakeCashbackRepository implements CashbackRepository {
 
   @override
   Future<CashbackSummary> fetchSummary({String? companyId}) async => summary;
+
+  @override
+  Future<void> redeem({required double amountIls, String? orderId}) async {}
 }
 
 void main() {
