@@ -144,7 +144,20 @@ $$;
 reset role;
 reset session "request.jwt.claims";
 
--- 4. Customer cannot read another tenant's cashback, nor credit themselves.
+-- Seed a fresh, non-delivered order for the buyer's company (default role,
+-- RLS-exempt) so section 4 can exercise the cashback award guards.
+DO $$
+BEGIN
+  INSERT INTO orders (id, customer_company_id, created_by, status, currency)
+  VALUES ('00000000-0000-0000-0000-0000000000f4',
+          '30000000-0000-0000-0000-000000000000',
+          '33333333-3333-3333-3333-333333333333', 'placed', 'ILS')
+  ON CONFLICT (id) DO NOTHING;
+END
+$$;
+
+-- 4. Customer cannot read another tenant's cashback, credit themselves directly,
+-- or earn cashback by self-marking their own order delivered.
 -- Guarded so the suite still runs before patch 023_cashback_ledger.sql.
 set local role authenticated;
 set session "request.jwt.claims" = '{
@@ -188,6 +201,37 @@ BEGIN
         RAISE;
       END IF;
   END;
+
+  -- Award-path guards (only when the RPC exists, i.e. patch 023 applied).
+  IF to_regprocedure('public.rpc_award_order_cashback(uuid)') IS NOT NULL THEN
+    -- (a) Direct RPC execution is denied for customers (execute revoked).
+    BEGIN
+      PERFORM rpc_award_order_cashback('00000000-0000-0000-0000-0000000000f4');
+      RAISE EXCEPTION
+        'Security violation: buyer executed rpc_award_order_cashback directly';
+    EXCEPTION
+      WHEN insufficient_privilege THEN
+        NULL; -- expected
+      WHEN raise_exception THEN
+        RAISE;
+      WHEN OTHERS THEN
+        IF SQLSTATE <> '42501' THEN
+          RAISE;
+        END IF;
+    END;
+
+    -- (b) A customer self-marking their order delivered must not earn cashback.
+    UPDATE orders SET status = 'delivered'
+     WHERE id = '00000000-0000-0000-0000-0000000000f4';
+    IF EXISTS (
+      SELECT 1 FROM cashback_ledger
+       WHERE order_id = '00000000-0000-0000-0000-0000000000f4'
+         AND entry_type = 'earn'
+    ) THEN
+      RAISE EXCEPTION
+        'Security violation: customer self-delivery credited cashback';
+    END IF;
+  END IF;
 END
 $$;
 

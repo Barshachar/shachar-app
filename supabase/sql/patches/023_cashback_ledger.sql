@@ -92,6 +92,13 @@ BEGIN
     RAISE EXCEPTION 'Order % not found', p_order_id;
   END IF;
 
+  -- Defense-in-depth: only fulfilled orders earn cashback, even if this RPC is
+  -- somehow invoked outside the delivery trigger.
+  IF v_order.status <> 'delivered' THEN
+    RAISE EXCEPTION 'Cashback can only be awarded for delivered orders (order % is %)',
+      p_order_id, v_order.status;
+  END IF;
+
   -- Already awarded? no-op.
   IF EXISTS (
     SELECT 1 FROM cashback_ledger
@@ -130,7 +137,11 @@ $$ LANGUAGE plpgsql
    SECURITY DEFINER
    SET search_path = public, auth;
 
-GRANT EXECUTE ON FUNCTION rpc_award_order_cashback(uuid) TO authenticated, service_role;
+-- Execution is restricted to service_role only. Customers must never be able to
+-- credit themselves by calling this RPC directly; the auto-award trigger below
+-- runs as SECURITY DEFINER (owned by the migration role) and can still call it.
+REVOKE EXECUTE ON FUNCTION rpc_award_order_cashback(uuid) FROM PUBLIC, authenticated;
+GRANT EXECUTE ON FUNCTION rpc_award_order_cashback(uuid) TO service_role;
 
 -- Auto-award trigger ----------------------------------------------------------
 -- Awards cashback when an order reaches the fulfilled 'delivered' state.
@@ -142,7 +153,14 @@ RETURNS trigger AS $$
 BEGIN
   IF NEW.status = 'delivered'
      AND NEW.status IS DISTINCT FROM OLD.status THEN
-    PERFORM rpc_award_order_cashback(NEW.id);
+    -- Only trusted delivery transitions award cashback. The orders_customer_rw
+    -- policy lets customers update their own orders, so a customer self-marking
+    -- an order 'delivered' must NOT credit cashback. auth_role() is NULL for the
+    -- service role / server-side jobs, and a real role for admin/vendor actors.
+    IF auth_role() IS NULL
+       OR auth_role() IN ('admin', 'vendor_admin', 'vendor_user') THEN
+      PERFORM rpc_award_order_cashback(NEW.id);
+    END IF;
   END IF;
   RETURN NEW;
 END;
