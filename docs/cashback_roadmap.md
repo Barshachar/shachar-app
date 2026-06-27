@@ -38,12 +38,13 @@ foundation first; the BTC path is gated behind a regulatory decision.
 2. **Redeem in checkout UI** — surface the `rpc_redeem_cashback` capability
    (already in the repo layer) in the Flutter cart/checkout, applying a `redeem`
    row against the order total.
-3. **Admin screen** — view/adjust balances (`adjust` entries) and report total
-   outstanding cashback liability.
-4. **Notifications** — "you earned ₪X cashback" after delivery, via the existing
-   `notifications` table.
-5. **Expiry sweep** — ✅ logic implemented in `rpc_expire_cashback` (patch 025).
-   Remaining: schedule it (pg_cron or an Edge Function cron) to run daily.
+3. **Admin screen** — ✅ `/admin/cashback`: liability total, per-company balances,
+   and manual `adjust` via `rpc_adjust_cashback` / `rpc_cashback_overview` (patch 026).
+4. **Notifications** — ✅ award now writes an `notifications` row to the buyer on
+   earn (patch 026).
+5. **Expiry sweep** — ✅ `rpc_expire_cashback` (patch 025) + `cashback_expire`
+   edge function (patch: supabase/functions). Remaining: point an external cron
+   at the function (no pg_cron in repo).
 
 ## Phase 2 — Web PWA parity
 

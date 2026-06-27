@@ -766,5 +766,19 @@
   "cashbackRedeemTooMuch": "Amount exceeds your balance",
   "cashbackRedeemConfirm": "Confirm redemption",
   "cashbackRedeemSuccess": "Cashback redeemed",
-  "cashbackRedeemFailed": "Redemption failed, try again"
+  "cashbackRedeemFailed": "Redemption failed, try again",
+  "adminDashboardCashbackCta": "Cashback",
+  "adminDashboardCashbackDescription": "Balances, liability and adjustments",
+  "adminCashbackTitle": "Cashback (admin)",
+  "adminCashbackError": "Failed to load cashback.",
+  "adminCashbackLiability": "Total cashback liability",
+  "adminCashbackByCompany": "Balances by company",
+  "adminCashbackEmpty": "No cashback balances.",
+  "adminCashbackAdjustCta": "Adjust",
+  "adminCashbackAdjusted": "Adjustment saved",
+  "adminCashbackAdjustAmount": "Amount (₪, negative = debit)",
+  "adminCashbackAdjustNote": "Note (optional)",
+  "adminCashbackAdjustConfirm": "Save",
+  "adminCashbackAdjustInvalid": "Enter a non-zero amount",
+  "adminCashbackAdjustFailed": "Adjustment failed, try again"
 }
